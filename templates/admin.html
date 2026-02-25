@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <script src="https://kit.fontawesome.com/aa11b2d154.js" crossorigin="anonymous"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px; 
+            color: #333; 
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 25px; 
+            background: rgba(255,255,255,0.95); 
+            padding: 20px 25px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); 
+        }
+        h1 { 
+            margin: 0; 
+            font-size: 1.6em; 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .back-btn { 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; 
+            text-decoration: none; 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            font-size: 0.85em; 
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .back-btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+        .stat-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .stat-icon.users { color: #667eea; }
+        .stat-icon.registered { color: #4caf50; }
+        .stat-icon.tasks { color: #ff9800; }
+        .stat-icon.rating { color: #e91e63; }
+        .stat-icon.today { color: #00bcd4; }
+        .stat-icon.avg { color: #9c27b0; }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 800;
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .section-title { 
+            font-size: 1.3em; 
+            font-weight: bold; 
+            margin: 30px 0 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .section-title i { 
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .leagues-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .league-card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .league-card.bronze::before { background: linear-gradient(90deg, #cd7f32, #b87333); }
+        .league-card.silver::before { background: linear-gradient(90deg, #c0c0c0, #a8a8a8); }
+        .league-card.gold::before { background: linear-gradient(90deg, #ffd700, #ffaa00); }
+        .league-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+        }
+        .league-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .league-icon.bronze { color: #cd7f32; }
+        .league-icon.silver { color: #c0c0c0; }
+        .league-icon.gold { color: #ffd700; }
+        .league-value {
+            font-size: 2em;
+            font-weight: 800;
+            color: #333;
+        }
+        .league-label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .top-users-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        .top-users-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+        }
+        .top-users-title i { color: #ffd700; }
+
+        .top-user-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            transition: all 0.2s;
+        }
+        .top-user-item:hover {
+            background: #f0f0f0;
+            transform: translateX(5px);
+        }
+        .top-user-rank {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 0.9em;
+        }
+        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #5c4400; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a8a8a8); color: #444; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32, #b87333); color: white; }
+        .rank-other { background: #e0e0e0; color: #666; }
+
+        .top-user-info { flex-grow: 1; }
+        .top-user-name { font-weight: 600; color: #333; }
+        .top-user-class { font-size: 0.8em; color: #888; }
+        .top-user-rating {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .bundles-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .bundles-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            color: #333;
+        }
+        .bundles-title i { 
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .add-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 3px 7px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.7em;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+        }
+        .bundle-item {
+            background: #ffffff;
+            padding: 18px 20px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            border: 1px solid #edf2f7;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .bundle-item:hover { 
+            border-color: #667eea; 
+            background: #f8faff; 
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+        }
+        .bundle-item span {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .bundle-item i {
+            color: #a0aec0;
+            transition: color 0.2s;
+        }
+        .bundle-item:hover i {
+            color: #667eea;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .admin-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 550px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        @keyframes modalFadeIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .admin-modal h2 {
+            font-size: 1.5em;
+            color: #1a202c;
+            margin-bottom: 25px;
+            font-weight: 800;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+        .form-input { 
+            width: 100%; 
+            padding: 12px 16px; 
+            border: 4px solid #e2e8f0; 
+            border-radius: 12px;
+            transition: all 0.2s;
+            font-size: 0.95em;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .question-form { 
+            background: #f7fafc;
+            border: 2px solid #edf2f7; 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 20px; 
+            position: relative; 
+            transition: all 0.2s;
+        }
+        .question-form:hover {
+            border-color: #e2e8f0;
+            background: #f1f5f9;
+        }
+        .remove-q { 
+            position: absolute; 
+            top: 5px; 
+            right: 5px; 
+            color: #e53e3e; 
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(229, 62, 62, 0.1);
+            transition: all 0.2s;
+        }
+        .remove-q:hover {
+            background: #e53e3e;
+            color: white;
+            transform: scale(1.1);
+        }
+        .btn-add-q {
+            width: 100%;
+            background: white;
+            color: #667eea;
+            border: 2px dashed #667eea;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+        .btn-add-q:hover {
+            background: rgba(102, 126, 234, 0.05);
+            border-style: solid;
+        }
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .btn-save {
+            background: #c5fcbd;
+            color: black;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            padding: 10px 18px;
+        }
+        .btn-save:hover {
+            border-style: solid;
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            transform: scale(1.1);
+        }
+        .btn-cancel {
+            background: #edf2f7;
+            color: #4a5568;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            padding: 10px 18px;
+        }
+        .btn-cancel:hover {
+            border-style: solid;
+            background: #e53e3e;
+            color: white;
+            transform: scale(1.1);
+        }
+        .action-menu { 
+            display: none; 
+            position: fixed; 
+            background: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+            border-radius: 12px; 
+            z-index: 1000; 
+            overflow: hidden; 
+            min-width: 180px;
+            border: 1px solid #edf2f7;
+        }
+        .action-item { 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #4a5568;
+        }
+        .action-item:hover { background: #f7fafc; color: #667eea; }
+        .action-item.delete { color: #e53e3e; }
+        .action-item.delete:hover { background: #fff5f5; }
+
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .leagues-grid { grid-template-columns: 1fr; }
+            .order-info { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fa-solid fa-chart-line"></i> Statistika</h1>
+            <a href="/" id="back-link" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Orqaga</a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fa-solid fa-users stat-icon users"></i>
+                <span class="stat-value" id="stat-total-users">0</span>
+                <span class="stat-label">Jami foydalanuvchilar</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-user-check stat-icon registered"></i>
+                <span class="stat-value" id="stat-registered">0</span>
+                <span class="stat-label">Ro'yxatdan o'tgan</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-tasks stat-icon tasks"></i>
+                <span class="stat-value" id="stat-tasks">0</span>
+                <span class="stat-label">Vazifalar bajarildi</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-star stat-icon rating"></i>
+                <span class="stat-value" id="stat-total-rating">0</span>
+                <span class="stat-label">Umumiy reyting</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-user-plus stat-icon today"></i>
+                <span class="stat-value" id="stat-new-today">0</span>
+                <span class="stat-label">Bugungi yangilar</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-chart-bar stat-icon avg"></i>
+                <span class="stat-value" id="stat-avg-rating">0</span>
+                <span class="stat-label">O'rtacha reyting</span>
+            </div>
+        </div>
+
+        <div class="bundles-card" style="margin-bottom: 25px;">
+            <div class="bundles-title">
+                <span><i class="fa-solid fa-calendar-check"></i> Mavsumni boshqarish</span>
+            </div>
+            <div style="padding: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9em; color: #4a5568;">
+                    <span>Mavsum progressi (reyting bo'yicha)</span>
+                    <span id="season-progress-text">0%</span>
+                </div>
+                <div style="width: 100%; height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-bottom: 20px;">
+                    <div id="season-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s ease;"></div>
+                </div>
+                <button class="btn-add-q" style="background: #fff5f5; border-color: #feb2b2; color: #c53030; border-style: solid;" onclick="confirmResetSeason()">
+                    <i class="fa-solid fa-rotate-right"></i> Yangi mavsumni boshlash (reytingni nolga tushirish)
+                </button>
+            </div>
+        </div>
+
+        <div class="section-title"><i class="fa-solid fa-trophy"></i> Ligalar</div>
+        <div class="leagues-grid">
+            <div class="league-card bronze">
+                <i class="fa-solid fa-medal league-icon bronze"></i>
+                <div class="league-value" id="league-bronze">0</div>
+                <div class="league-label">Bronza ligasi<br><small>5-6 sinf</small></div>
+            </div>
+            <div class="league-card silver">
+                <i class="fa-solid fa-medal league-icon silver"></i>
+                <div class="league-value" id="league-silver">0</div>
+                <div class="league-label">Kumush ligasi<br><small>7-8 sinf</small></div>
+            </div>
+            <div class="league-card gold">
+                <i class="fa-solid fa-crown league-icon gold"></i>
+                <div class="league-value" id="league-gold">0</div>
+                <div class="league-label">Oltin ligasi<br><small>9-11 sinf</small></div>
+            </div>
+        </div>
+
+        <div class="top-users-card">
+            <div class="top-users-title"><i class="fa-solid fa-ranking-star"></i> Top-10 foydalanuvchilar</div>
+            <div id="top-users"></div>
+        </div>
+
+        <div class="bundles-card" style="margin-bottom: 25px;">
+            <div class="bundles-title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                <span style="font-size: 0.88em;"><i class="fa-solid fa-users-gear"></i> Foydalanuvchilarni boshqarish</span>
+                <div style="display: flex; align-items: center; width: 100%; position: relative;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; color: #666; z-index: 2; font-size: 0.85em;"></i>
+                    <input type="text" id="user-search" class="form-input" placeholder="Ism/familiya bo'yicha qidirish..." style="width: 100%; font-size: 0.8em; padding-left: 35px; padding-right: 10px; height: 34px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;" oninput="filterUsers()">
+                </div>
+            </div>
+            <div id="users-list-container" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <div id="users-admin-list"></div>
+            </div>
+        </div>
+
+        <div class="bundles-card">
+            <div class="bundles-title">
+                <span><i class="fa-solid fa-layer-group"></i> Vazifalar to'plamlari</span>
+                <button class="add-btn" onclick="openModal()">
+                    <i class="fa-solid fa-plus" style="color: #ffffff;"></i>
+                </button>
+            </div>
+            <div id="bundles-list"></div>
+            <div id="empty-bundles" style="text-align: center; padding: 40px; color: #a0aec0;">
+                <i class="fa-solid fa-folder-open" style="font-size: 3em; margin-bottom: 15px; opacity: 0.3; display: block;"></i>
+                To'plamlar hozircha yo'q
+            </div>
+        </div>
+    </div>
+
+    <!-- Bundle Modal -->
+    <div id="bundle-modal" class="modal-overlay">
+        <div class="admin-modal">
+            <h2 id="modal-title">Yangi to'plam</h2>
+            <div class="form-group">
+                <label>To'plam nomi</label>
+                <input type="text" id="bundle-name" class="form-input" placeholder="To'plam nomini kiriting">
+            </div>
+            <div class="form-group">
+                <label>Liga</label>
+                <select id="bundle-league" class="form-input">
+                    <option value="bronza">Bronza liga (5-6 sinf)</option>
+                    <option value="kumush">Kumush liga (7-8 sinf)</option>
+                    <option value="oltin">Oltin liga (9-11 sinf)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vaqt limiti (daqiqa)</label>
+                <input type="number" id="bundle-time-limit" class="form-input" placeholder="0 - vaqt cheklanmagan" min="0" value="0">
+                <small style="color: #888; font-size: 0.8em;">0 yoki bo'sh - vaqt cheklanmaydi</small>
+            </div>
+            <div id="questions-container"></div>
+            <button class="btn-add-q" onclick="addQuestionField()">
+                <i class="fa-solid fa-plus"></i> Savol qo'shish
+            </button>
+            <div class="modal-footer">
+                <button class="btn btn-save" onclick="saveBundle()">Saqlash</button>
+                <button class="btn btn-cancel" onclick="closeModal()">Bekor qilish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Menu -->
+    <div id="action-menu" class="action-menu">
+        <div class="action-item" onclick="editSelectedBundle()">
+            <i class="fa-solid fa-pen"></i> Tahrirlash
+        </div>
+        <div class="action-item delete" onclick="deleteSelectedBundle()">
+            <i class="fa-solid fa-trash"></i> O'chirish
+        </div>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div id="user-modal" class="modal-overlay">
+        <div class="admin-modal">
+            <h2>Foydalanuvchini tahrirlash</h2>
+            <div class="form-group">
+                <label>Telegram ID (o'zgartirib bo'lmaydi)</label>
+                <input type="text" id="edit-user-id" class="form-input" disabled>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="edit-user-username" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Ism</label>
+                <input type="text" id="edit-user-first-name" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Familiya</label>
+                <input type="text" id="edit-user-last-name" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Sinf</label>
+                <input type="text" id="edit-user-class" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Reyting</label>
+                <input type="number" id="edit-user-rating" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Holat</label>
+                <div id="user-status-display" style="padding: 12px 16px; background: #f7fafc; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 0.95em;">
+                    <span id="user-block-status">Yuklanmoqda...</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="grid-template-columns: 1fr 1fr 1fr;">
+                <button class="btn btn-save" onclick="saveUserEdit()">Saqlash</button>
+                <button class="btn" id="block-unblock-btn" onclick="toggleBlockUser()" style="background: #e53e3e; color: white; border: none; border-radius: 5px; font-size: 1em; padding: 10px 18px;">Bloklash</button>
+                <button class="btn btn-cancel" onclick="closeUserModal()">Bekor qilish</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const pass = urlParams.get('pass');
+
+        if (pass) {
+            document.getElementById('back-link').href = `/?pass=${pass}`;
+        }
+
+        async function loadStats() {
+            try {
+                const currentPass = pass || 'admin123';
+                const resp = await fetch(`/api/admin/stats?pass=${currentPass}`);
+                const stats = await resp.json();
+
+                document.getElementById('stat-total-users').innerText = stats.total_users || 0;
+                document.getElementById('stat-registered').innerText = stats.registered_users || 0;
+                document.getElementById('stat-tasks').innerText = stats.total_tasks_completed || 0;
+                document.getElementById('stat-total-rating').innerText = stats.total_rating || 0;
+                document.getElementById('stat-new-today').innerText = stats.new_today || 0;
+                document.getElementById('stat-avg-rating').innerText = stats.avg_rating || 0;
+
+                const daysLeft = stats.days_left !== undefined ? stats.days_left : 30;
+                const progress = Math.min(Math.round(((30 - daysLeft) / 30) * 100), 100);
+                document.getElementById('season-progress-bar').style.width = progress + '%';
+                document.getElementById('season-progress-text').innerText = `Qolgan kunlar: ${daysLeft}`;
+
+                document.getElementById('league-bronze').innerText = stats.bronze_league || 0;
+                document.getElementById('league-silver').innerText = stats.silver_league || 0;
+                document.getElementById('league-gold').innerText = stats.gold_league || 0;
+
+                const topContainer = document.getElementById('top-users');
+                topContainer.innerHTML = '';
+
+                if (stats.top_users && stats.top_users.length > 0) {
+                    stats.top_users.forEach((user, idx) => {
+                        const rank = idx + 1;
+                        const name = user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : (user.username || `Foydalanuvchi ${user.user_id}`);
+
+                        const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+
+                        const div = document.createElement('div');
+                        div.className = 'top-user-item';
+                        div.innerHTML = `
+                            <div class="top-user-rank ${rankClass}">${rank}</div>
+                            <div class="top-user-info">
+                                <div class="top-user-name">${name}</div>
+                                <div class="top-user-class">${user.class_name || 'Sinf ko\'rsatilmagan'}</div>
+                            </div>
+                            <div class="top-user-rating">${user.rating || 0} ★</div>
+                        `;
+                        topContainer.appendChild(div);
+                    });
+                } else {
+                    topContainer.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Hozircha ma\'lumot yo\'q</div>';
+                }
+            } catch (e) { 
+                console.error('Statistikani yuklash xatosi:', e); 
+            }
+        }
+
+        async function confirmResetSeason() {
+            if (confirm("Yangi mavsumni boshlashni istaysizmi? Barcha foydalanuvchilarning reytingi nolga tushiriladi va vazifalar tarixi tozalanadi. Bu amal qaytarib bo'lmaydi!")) {
+                try {
+                    const currentPass = pass || 'admin123';
+                    const response = await fetch(`/api/admin/reset-season?pass=${currentPass}`, {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert("Mavsum muvaffaqiyatli qayta tiklandi!");
+                        loadStats();
+                        loadUsers();
+                    } else {
+                        alert("Xato: " + result.message);
+                    }
+                } catch (error) {
+                    alert("Mavsumni qayta tiklashda xato yuz berdi");
+                    console.error(error);
+                }
+            }
+        }
+
+        let editingBundleId = null;
+        let selectedBundleId = null;
+        let selectedUserId = null;
+        let allUsersData = [];
+        let currentUserBlocked = false;
+
+        async function loadUsers() {
+            try {
+                const currentPass = pass || 'admin123';
+                const resp = await fetch(`/api/admin/users?pass=${currentPass}`);
+                if (!resp.ok) {
+                    console.error('Foydalanuvchilarni yuklash muvaffaqiyatsiz:', await resp.text());
+                    return;
+                }
+                allUsersData = await resp.json();
+                renderUsers(allUsersData);
+            } catch (e) {
+                console.error('Foydalanuvchilarni yuklash xatosi:', e);
+            }
+        }
+
+        function renderUsers(users) {
+            const list = document.getElementById('users-admin-list');
+            list.innerHTML = '';
+            if (users.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Bunday foydalanuvchilar yo\'q</div>';
+                return;
+            }
+            users.forEach(user => {
+                const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || `Foydalanuvchi ${user.user_id}`;
+                const isBlocked = user.is_blocked || false;
+                const div = document.createElement('div');
+                div.className = 'bundle-item';
+                div.style.cursor = 'default';
+                div.innerHTML = `
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.95em;">${name} ${isBlocked ? '<i class="fa-solid fa-ban" style="color: #e53e3e;" title="Bloklangan"></i>' : ''} <small style="color: #888;">ID: ${user.user_id}</small></span>
+                        <small style="color: #666;">Sinf: ${user.class_name || '-'} | Reyting: ${user.rating}</small>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="add-btn" style="padding: 6px 12px; font-size: 0.75em; background: #3f69b5;" onclick="openUserModal(${JSON.stringify(user).replace(/"/g, '&quot;')})">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="add-btn" style="padding: 6px 12px; font-size: 0.75em; background: #e53e3e;" onclick="deleteUser(${user.user_id})">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase().trim();
+            const filtered = allUsersData.filter(u => {
+                const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
+                const username = (u.username || '').toLowerCase();
+                return fullName.includes(query) || username.includes(query);
+            });
+            renderUsers(filtered);
+        }
+
+        function openUserModal(user) {
+            selectedUserId = user.user_id;
+            document.getElementById('edit-user-id').value = user.user_id;
+            document.getElementById('edit-user-username').value = user.username || '';
+            document.getElementById('edit-user-first-name').value = user.first_name || '';
+            document.getElementById('edit-user-last-name').value = user.last_name || '';
+            document.getElementById('edit-user-class').value = user.class_name || '';
+            document.getElementById('edit-user-rating').value = user.rating || 0;
+
+            // Check blocking status
+            currentUserBlocked = user.is_blocked || false;
+            updateBlockButton();
+
+            document.getElementById('user-modal').style.display = 'flex';
+        }
+
+        function updateBlockButton() {
+            const btn = document.getElementById('block-unblock-btn');
+            const statusSpan = document.getElementById('user-block-status');
+
+            if (currentUserBlocked) {
+                btn.innerHTML = '<i class="fa-solid fa-unlock"></i> Blokdan ochish';
+                btn.style.background = '#48bb78';
+                statusSpan.innerHTML = '<span style="color: #e53e3e;"><i class="fa-solid fa-ban"></i> Bloklangan</span>';
+                statusSpan.parentElement.style.borderColor = '#e53e3e';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-ban"></i> Bloklash';
+                btn.style.background = '#e53e3e';
+                statusSpan.innerHTML = '<span style="color: #48bb78;"><i class="fa-solid fa-check"></i> Faol</span>';
+                statusSpan.parentElement.style.borderColor = '#48bb78';
+            }
+        }
+
+        async function toggleBlockUser() {
+            if (!selectedUserId) return;
+
+            const action = currentUserBlocked ? 'unblock' : 'block';
+            const confirmMsg = currentUserBlocked 
+                ? 'Bu foydalanuvchini blokdan ochishni istaysizmi?'
+                : 'Bu foydalanuvchini bloklashni istaysizmi? U botdan foydalana olmaydi!';
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const currentPass = pass || 'admin123';
+                const resp = await fetch(`/api/admin/user/${selectedUserId}/block?pass=${currentPass}&action=${action}`, {
+                    method: 'POST'
+                });
+                const res = await resp.json();
+
+                if (res.success) {
+                    currentUserBlocked = res.is_blocked;
+                    updateBlockButton();
+                    loadUsers(); // Refresh user list to show blocking status
+                } else {
+                    alert('Xato: ' + res.message);
+                }
+            } catch (e) {
+                console.error('Block toggle xatosi:', e);
+                alert('Xatolik yuz berdi');
+            }
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').style.display = 'none';
+        }
+
+        async function saveUserEdit() {
+            const userId = document.getElementById('edit-user-id').value;
+            const data = {
+                username: document.getElementById('edit-user-username').value,
+                first_name: document.getElementById('edit-user-first-name').value,
+                last_name: document.getElementById('edit-user-last-name').value,
+                class_name: document.getElementById('edit-user-class').value,
+                rating: parseInt(document.getElementById('edit-user-rating').value)
+            };
+            const currentPass = pass || 'admin123';
+            const resp = await fetch(`/api/admin/user/${userId}/update?pass=${currentPass}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const res = await resp.json();
+            if (res.success) {
+                closeUserModal();
+                loadUsers();
+                loadStats();
+            } else {
+                alert('Saqlash xatosi: ' + res.message);
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Bu foydalanuvchini o\'chirishni istaysizmi? Uning barcha ma\'lumotlari tiklanmas tarzda o\'chiriladi.')) return;
+            const currentPass = pass || 'admin123';
+            const resp = await fetch(`/api/admin/user/${userId}/delete?pass=${currentPass}`, { method: 'POST' });
+            const res = await resp.json();
+            if (res.success) {
+                loadUsers();
+                loadStats();
+            } else {
+                alert('O\'chirish xatosi: ' + res.message);
+            }
+        }
+
+        async function loadBundles() {
+            try {
+                const currentPass = pass || 'admin123';
+                const resp = await fetch(`/api/admin/bundles?pass=${currentPass}`);
+                const bundles = await resp.json();
+                const list = document.getElementById('bundles-list');
+                const empty = document.getElementById('empty-bundles');
+                list.innerHTML = '';
+
+                if (!bundles || bundles.length === 0) {
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                // Функция для получения названия лиги
+                function getLeagueName(leagueId) {
+                    const leagueNames = {
+                        'bronza': 'Bronza',
+                        'kumush': 'Kumush',
+                        'oltin': 'Oltin'
+                    };
+                    return leagueNames[leagueId] || leagueId || 'Nomaium';
+                }
+
+                empty.style.display = 'none';
+                bundles.forEach(b => {
+                    const leagueName = getLeagueName(b.league_id);
+                    const timeLimit = b.time_limit > 0 ? ` ${b.time_limit} daqiqa` : '';
+                    const div = document.createElement('div');
+                    div.className = 'bundle-item';
+                    div.innerHTML = `<span>${b.name} <small style="color: #888;">(${leagueName})</small> (${b.questions ? b.questions.length : 0} savol)${timeLimit}</span><i class="fa-solid fa-ellipsis-vertical"></i>`;
+                    div.onclick = (e) => {
+                        e.stopPropagation();
+                        showActionMenu(e, b.id);
+                    };
+                    list.appendChild(div);
+                });
+            } catch (e) { 
+                console.error('To\'plamlarni yuklash xatosi:', e);
+                const empty = document.getElementById('empty-bundles');
+                if (empty) empty.style.display = 'block';
+            }
+        }
+
+        function showActionMenu(e, id) {
+            selectedBundleId = id;
+            const menu = document.getElementById('action-menu');
+
+            // Позиционируем меню рядом с элементом
+            const rect = e.target.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.display = 'block';
+
+            // Удаляем старые обработчики
+            document.removeEventListener('click', window.actionMenuCloseHandler);
+
+            // Закрываем меню при клике вне его
+            window.actionMenuCloseHandler = function(event) {
+                if (!menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', window.actionMenuCloseHandler);
+                }
+            };
+
+            setTimeout(function() {
+                document.addEventListener('click', window.actionMenuCloseHandler);
+            }, 10);
+
+            // Останавливаем всплытие чтобы меню не закрылось сразу
+            if (e.stopPropagation) e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+        }
+
+        function openModal(bundle = null) {
+            editingBundleId = bundle ? bundle.id : null;
+            document.getElementById('modal-title').innerText = bundle ? 'To\'plamni tahrirlash' : 'Yangi to\'plam';
+            document.getElementById('bundle-name').value = bundle ? bundle.name : '';
+            document.getElementById('bundle-league').value = bundle && bundle.league_id ? bundle.league_id : 'bronza';
+            document.getElementById('bundle-time-limit').value = bundle && bundle.time_limit ? bundle.time_limit : 0;
+            document.getElementById('questions-container').innerHTML = '';
+
+            if (bundle && bundle.questions && bundle.questions.length > 0) {
+                bundle.questions.forEach(q => addQuestionField(q));
+            } else {
+                addQuestionField();
+            }
+
+            document.getElementById('bundle-modal').style.display = 'flex';
+
+            // Close action menu if open
+            const menu = document.getElementById('action-menu');
+            if (menu) menu.style.display = 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('bundle-modal').style.display = 'none';
+        }
+
+        function addQuestionField(q = null) {
+            const container = document.getElementById('questions-container');
+            const div = document.createElement('div');
+            div.className = 'question-form';
+            div.innerHTML = `
+                <i class="fa-solid fa-xmark remove-q" onclick="this.parentElement.remove()"></i>
+                <div class="form-group">
+                    <label>Savol</label>
+                    <input type="text" class="form-input q-text" placeholder="Savol matnini kiriting" value="${q ? q.question : ''}">
+                </div>
+                <div class="form-group">
+                    <label>Javob variantlari (| bilan ajratilgan)</label>
+                    <input type="text" class="form-input q-options" placeholder="Variant 1|Variant 2|..." value="${q ? q.options : ''}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>To'g'ri javob (indeksi)</label>
+                        <input type="number" class="form-input q-correct" placeholder="0" value="${q ? q.correct_option : 0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Javob uchun reyting</label>
+                        <input type="number" class="form-input q-rating" placeholder="5" value="${q ? q.rating : 5}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        async function saveBundle() {
+            const name = document.getElementById('bundle-name').value.trim();
+            if (!name) {
+                alert('To\'plam nomini kiriting');
+                return;
+            }
+
+            const qElements = document.querySelectorAll('.question-form');
+            if (qElements.length === 0) {
+                alert('Kamida bitta savol qo\'shing');
+                return;
+            }
+
+            const questions = Array.from(qElements).map(el => {
+                const question = el.querySelector('.q-text').value.trim();
+                const options = el.querySelector('.q-options').value.trim();
+                const correct_option = parseInt(el.querySelector('.q-correct').value);
+                const rating = parseInt(el.querySelector('.q-rating').value) || 5;
+
+                if (!question || !options) {
+                    alert('Barcha savol maydonlarini to\'ldiring');
+                    throw new Error('Validatsiya muvaffaqiyatsiz');
+                }
+
+                return {
+                    question: question,
+                    options: options,
+                    correct_option: isNaN(correct_option) ? 0 : correct_option,
+                    rating: isNaN(rating) ? 5 : rating
+                };
+            });
+
+            const league_id = document.getElementById('bundle-league').value;
+            const time_limit = parseInt(document.getElementById('bundle-time-limit').value) || 0;
+
+            const currentPass = pass || 'admin123';
+            const url = editingBundleId 
+                ? `/api/admin/bundle/${editingBundleId}?pass=${currentPass}` 
+                : `/api/admin/bundle?pass=${currentPass}`;
+
+            const method = editingBundleId ? 'PUT' : 'POST';
+
+            try {
+                const resp = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, questions, league_id, time_limit })
+                });
+
+                const result = await resp.json();
+                console.log('Bundle save result:', result);
+                if (resp.ok && result.success) {
+                    closeModal();
+                    loadBundles();
+                } else {
+                    alert('Saqlash xatosi: ' + (result.message || 'Noma\'lum xato'));
+                }
+            } catch (e) {
+                console.error('Save bundle error:', e);
+                alert('Saqlash xatosi: ' + e.message);
+            }
+        }
+
+        async function deleteSelectedBundle() {
+            if (!selectedBundleId) {
+                alert('Сборка не выбрана');
+                return;
+            }
+            if (!confirm('Bu to\'plamni o\'chirishni istaysizmi? Barcha bog\'liq ma\'lumotlar o\'chiriladi.')) return;
+
+            const currentPass = pass || 'admin123';
+            console.log('Deleting bundle:', selectedBundleId, 'with pass:', currentPass);
+
+            try {
+                const resp = await fetch(`/api/admin/bundle/${selectedBundleId}?pass=${currentPass}`, { 
+                    method: 'DELETE' 
+                });
+                console.log('Delete response:', resp);
+                const result = await resp.json();
+                console.log('Delete result:', result);
+
+                if (result.success) {
+                    // Close action menu
+                    const menu = document.getElementById('action-menu');
+                    if (menu) menu.style.display = 'none';
+                    selectedBundleId = null;
+                    loadBundles();
+                } else {
+                    alert('O\'chirishda xato: ' + (result.message || 'Noma\'lum xato'));
+                }
+            } catch (e) {
+                console.error('Delete error:', e);
+                alert('O\'chirishda xato: ' + e.message);
+            }
+        }
+
+        async function editSelectedBundle() {
+            if (!selectedBundleId) {
+                alert('Сборка не выбрана');
+                return;
+            }
+
+            const currentPass = pass || 'admin123';
+            console.log('Loading bundle for edit:', selectedBundleId);
+
+            try {
+                const resp = await fetch(`/api/admin/bundles?pass=${currentPass}`);
+                const bundles = await resp.json();
+                console.log('All bundles:', bundles);
+                const b = bundles.find(x => x.id === selectedBundleId);
+
+                if (b) {
+                    // Close action menu
+                    const menu = document.getElementById('action-menu');
+                    if (menu) menu.style.display = 'none';
+                    openModal(b);
+                } else {
+                    alert('Сборка не найдена');
+                }
+            } catch (e) {
+                console.error('Edit load error:', e);
+                alert('To\'plam ma\'lumotlarini yuklash muvaffaqiyatsiz: ' + e.message);
+            }
+        }
+
+        loadStats();
+        loadBundles();
+        loadUsers();
+
+        setInterval(loadStats, 30000);
+        setInterval(loadBundles, 30000);
+        setInterval(loadUsers, 30000);
+    </script>
+</body>
+</html>

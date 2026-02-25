@@ -1,0 +1,3783 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vazifalar</title>
+    <script src="https://kit.fontawesome.com/aa11b2d154.js" crossorigin="anonymous"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --secondary-text: #666666;
+            --header-bg: #ffffff;
+            --shadow-color: rgba(0,0,0,0.05);
+            --border-color: #e0e0e0;
+            --modal-bg: #ffffff;
+            --input-bg: #ffffff;
+            --input-border: #cccccc;
+            --tab-inactive-bg: #e0e0e0;
+            --tab-inactive-text: #666666;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --container-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --secondary-text: #b0b0b0;
+            --header-bg: #2d2d2d;
+            --shadow-color: rgba(0,0,0,0.3);
+            --border-color: #444444;
+            --modal-bg: #2d2d2d;
+            --input-bg: #3d3d3d;
+            --input-border: #555555;
+            --tab-inactive-bg: #3d3d3d;
+            --tab-inactive-text: #b0b0b0;
+        }
+
+        body { font-family: sans-serif; background: var(--bg-color); margin: 0; padding: 15px; color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
+
+        /* Registration Modal Styles */
+        #registration-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+        #registration-modal-content {
+            width: 85%;
+            max-width: 400px;
+            background: var(--container-bg);
+            border-radius: 20px;
+            padding: 30px 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            animation: modalSlideUp 0.4s ease-out;
+        }
+        @keyframes modalSlideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .reg-input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 15px;
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .reg-btn {
+            width: 100%;
+            padding: 15px;
+            background: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .reg-btn:active {
+            transform: scale(0.98);
+            background: #0077b3;
+        }
+        .reg-title {
+            margin-bottom: 10px;
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+        .reg-subtitle {
+            color: var(--secondary-text);
+            margin-bottom: 25px;
+            font-size: 0.9em;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--header-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px var(--shadow-color); transition: background-color 0.3s; }
+        .user-info { display: flex; align-items: center; gap: 10px; position: relative; }
+        .avatar-container { position: relative; width: 35px; height: 35px; }
+        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0088cc; }
+        .santa-hat {
+            position: absolute;
+            top: -15px !important;
+            left: -12px !important;
+            width: 50px !important;
+            height: auto !important;
+            z-index: 2 !important;
+            transform: rotate(5deg) !important;
+            pointer-events: none !important;
+            display: block !important;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+        }
+        .username { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 1.1em; color: var(--text-color); }
+        .medal-icon { font-size: 0.9em; }
+        .medal-bronze { color: #cd7f32; }
+        .medal-silver { color: #c0c0c0; }
+        .medal-gold { color: #ffd700; }
+        .medal-none { display: none; }
+        .balance { font-weight: bold; color: #0088cc; font-size: 1.2em; margin-bottom: 20px; }
+        .nav-tabs { display: flex; background: var(--container-bg); margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px var(--shadow-color); transition: background-color 0.3s; }
+        .nav-tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: bold; color: var(--tab-inactive-text); transition: all 0.2s; background: var(--container-bg); }
+        .nav-tab.active { background: #0088cc; color: #fff; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .slider-container {
+            position: relative;
+            width: 100%;
+            overflow-y: auto;
+            max-height: 400px;
+            margin-bottom: 20px;
+            padding-right: 5px;
+        }
+        .slider-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .slider-container::-webkit-scrollbar-track {
+            background: var(--tab-inactive-bg);
+            border-radius: 3px;
+        }
+        .slider-container::-webkit-scrollbar-thumb {
+            background: #0088cc;
+            border-radius: 3px;
+        }
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .slide {
+            width: 100%;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .slider-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        .slider-btn {
+            flex: 1;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 12px;
+            color: var(--text-color);
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+        .slider-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .slider-btn i { font-size: 1.1em; }
+        /* Bundle Card Styles */
+        .bundle-card {
+            background: var(--container-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .bundle-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        .bundle-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .bundle-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #0088cc, #00c6ff);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+            flex-shrink: 0;
+        }
+        .bundle-info {
+            flex-grow: 1;
+        }
+        .bundle-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: var(--text-color);
+            margin-bottom: 4px;
+        }
+        .bundle-subtitle {
+            font-size: 0.9em;
+            color: var(--secondary-text);
+        }
+        .bundle-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0088cc, #0077b3);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .bundle-btn:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+        .bundle-btn.completed {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+        }
+
+        /* Bundle Timer Styles */
+        .bundle-timer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(0, 136, 204, 0.1);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #0088cc;
+        }
+        .bundle-timer.warning {
+            background: rgba(255, 152, 0, 0.1);
+            color: #ff9800;
+        }
+        .bundle-timer.danger {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .bundle-timer i {
+            font-size: 1.2em;
+        }
+
+        /* Stats Modal Styles */
+        #stats-modal .modal-content {
+            max-width: 420px;
+            padding: 25px;
+            border-radius: 24px;
+        }
+        .stats-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stats-item {
+            background: var(--input-bg);
+            padding: 15px;
+            border-radius: 14px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .stats-item-label {
+            font-size: 0.85em;
+            color: var(--secondary-text);
+            margin-bottom: 5px;
+        }
+        .stats-item-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .stats-item-value.correct { color: #4caf50; }
+        .stats-item-value.incorrect { color: #f44336; }
+        .stats-item-value.rating { color: #0088cc; }
+        .stats-progress {
+            margin: 20px 0;
+        }
+        .stats-progress-bar {
+            height: 12px;
+            background: var(--tab-inactive-bg);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .stats-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        .stats-progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: var(--secondary-text);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--secondary-text);
+        }
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        .status-badge { font-size: 0.8em; padding: 4px 10px; border-radius: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-pending { background: rgba(0, 136, 204, 0.1); color: #0088cc; }
+        .status-completed { background: rgba(76, 175, 80, 0.1); color: #4caf50; }
+        .status-rejected { background: rgba(244, 67, 54, 0.1); color: #f44336; }
+        .item-card { background: var(--container-bg); padding: 18px; border-radius: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); transition: transform 0.2s; }
+        .item-card:active { transform: scale(0.98); }
+        .item-info { display: flex; flex-direction: column; flex-grow: 1; }
+        .item-name { font-weight: bold; margin-bottom: 4px; color: var(--text-color); }
+        .item-price { color: var(--secondary-text); font-size: 0.9em; }
+        .buy-btn { background: #0088cc; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+        .buy-btn:active { opacity: 0.7; }
+        .admin-link {
+            text-align: center;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            background: #0088cc;
+            display: none;
+            width: 80%;
+            margin: 20px auto;
+        }
+        .admin-visible { display: block !important; visibility: visible !important; opacity: 1 !important; }
+        .admin-hidden { display: none !important; }
+        #error-msg { display: none; color: #f44336; text-align: center; margin-top: 50px; padding: 20px; }
+        #loading { text-align: center; margin-top: 50px; color: var(--text-color); }
+
+        /* Theme Toggle */
+        .theme-toggle { cursor: pointer; font-size: 1.2em; color: var(--secondary-text); padding: 5px; }
+        .snow-toggle { cursor: pointer; font-size: 1.2em; color: var(--secondary-text); padding: 5px; transition: color 0.3s; }
+        .snow-toggle.active { color: #0088cc; }
+        .snow-toggle.inactive { color: #888; opacity: 0.5; }
+
+        /* Snow effect */
+        #snow-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: #888;
+            font-size: 1em;
+            user-select: none;
+            pointer-events: none;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Season Progress Styles */
+        .season-progress-container {
+            margin: 0 0 20px 0;
+            padding: 15px 20px;
+            background: var(--container-bg);
+            border-radius: 20px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        .season-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .season-progress-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .season-progress-days {
+            font-size: 0.8em;
+            color: #0088cc;
+            font-weight: bold;
+        }
+        .season-progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--tab-inactive-bg);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .season-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0088cc, #00c6ff);
+            width: 0%;
+            transition: width 1s ease-out;
+            border-radius: 5px;
+        }
+
+        /* Modal for Success Message */
+        #success-modal .modal-content { 
+            text-align: center;
+            padding: 30px 20px;
+        }
+        #success-icon {
+            font-size: 4em;
+            color: #4caf50;
+            margin-bottom: 20px;
+            display: block;
+            animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #success-title {
+            margin: 0 0 15px;
+            color: var(--text-color);
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        #success-message-content {
+            font-size: 1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: var(--secondary-text);
+        }
+        #success-message-content b {
+            color: #0088cc;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: var(--modal-bg); margin: 2% auto; padding: 15px; border-radius: 12px; width: 85%; max-width: 320px; text-align: center; color: var(--text-color); transition: background-color 0.3s; }
+        .stars { font-size: 1.5em; margin: 10px 0; display: flex; justify-content: center; gap: 5px; cursor: pointer; }
+        .star { color: #ccc; }
+        .star.active { color: #ffca28; }
+        .review-textarea { width: 100%; height: 60px; border: 1px solid var(--input-border); border-radius: 8px; padding: 8px; margin-bottom: 10px; box-sizing: border-box; background: var(--input-bg); color: var(--text-color); font-size: 0.9em; }
+
+        /* Bounce Cards Styles */
+        .bounceCardsContainer {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 120px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        #school-photos-section img.imagegl {
+            margin-bottom: 0 !important;
+        }
+
+        #school-photos-container {
+            margin-top: 0 !important;
+        }
+
+        .imagegl {
+            transition: transform 0.3s ease !important;
+        }
+
+        .imagegl:hover {
+            transform: scale(1.05) !important;
+        }
+
+        .card {
+          position: absolute;
+          width: 70px;
+          height: 70px;
+          border: 2px solid #fff;
+          border-radius: 50%;
+          overflow: hidden;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+          cursor: pointer;
+          transition: z-index 0.3s;
+          z-index: 1;
+        }
+
+        .card .image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .modal-btns { display: flex; flex-direction: column; gap: 8px; }
+        .modal-btn { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        .btn-submit { background: #0088cc; color: white; }
+        .btn-submit:active { background: #0077b3; }
+
+        /* Tasks Modal Styles */
+        #tasks-modal .modal-content {
+            max-width: 450px;
+            padding: 25px;
+            border-radius: 24px;
+            text-align: left;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        #tasks-modal .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        #tasks-modal .modal-content::-webkit-scrollbar-track {
+            background: var(--tab-inactive-bg);
+            border-radius: 3px;
+        }
+        #tasks-modal .modal-content::-webkit-scrollbar-thumb {
+            background: #0088cc;
+            border-radius: 3px;
+        }
+        .task-option {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .task-option:hover {
+            border-color: #0088cc;
+            background: rgba(0, 136, 204, 0.05);
+        }
+        .task-option.selected {
+            background: #0088cc;
+            color: white;
+            border-color: #0088cc;
+        }
+        .task-option-circle {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .task-option.selected .task-option-circle {
+            border-color: white;
+            background: white;
+            box-shadow: inset 0 0 0 4px #0088cc;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .profile-close-btn {
+            cursor: pointer;
+            font-size: 1.3em;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.1);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px;
+        }
+
+        .profile-close-btn:hover {
+            background: rgba(0,0,0,0.2);
+        }
+        .task-progress {
+            font-size: 0.9em;
+            color: var(--secondary-text);
+        }
+        .task-question {
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+        .btn-later { background: var(--tab-inactive-bg); color: var(--secondary-text); }
+
+        /* Pedestal Styles */
+        .leagues-info-container {
+            margin: 0 0 20px 0;
+            padding: 20px;
+            background: var(--container-bg);
+            border-radius: 24px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        .leagues-info-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .league-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-radius: 16px;
+            margin-bottom: 10px;
+            border: none;
+        }
+        .league-info-item:last-child { margin-bottom: 0; }
+
+        .league-info-name { font-weight: bold; font-size: 1.1em; }
+        .league-info-classes { font-weight: bold; font-size: 0.95em; opacity: 0.8; }
+
+        .league-bronze-item { background: #fff5ed; color: #d97706; }
+        .league-silver-item { background: #f8f9fa; color: #6b7280; }
+        .league-gold-item { background: #fffbeb; color: #eab308; }
+
+        [data-theme="dark"] .league-bronze-item { background: rgba(217, 119, 6, 0.1); color: #fbbf24; }
+        [data-theme="dark"] .league-silver-item { background: rgba(107, 114, 128, 0.1); color: #d1d5db; }
+        [data-theme="dark"] .league-gold-item { background: rgba(234, 179, 8, 0.1); color: #fde047; }
+
+        .pedestal-container {
+            margin: 20px 0 10px 0;
+            padding: 25px;
+            background: var(--container-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .pedestal-container2 {
+            margin: 20px 0 10px 0;
+            padding: 25px;
+            background: var(--container-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .season-progress-container {
+            margin: 0 0 20px 0;
+            padding: 15px 20px;
+            background: var(--container-bg);
+            border-radius: 20px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        .season-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .season-progress-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .season-progress-days {
+            font-size: 0.8em;
+            color: #0088cc;
+            font-weight: bold;
+        }
+        .season-progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--tab-inactive-bg);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .season-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0088cc, #00c6ff);
+            width: 0%;
+            transition: width 1s ease-out;
+            border-radius: 5px;
+        }
+        .pedestal-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ffd700, #0088cc, #ffd700);
+            opacity: 0.5;
+        }
+
+        .pedestal-container2::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ffd700, #0088cc, #ffd700);
+            opacity: 0.5;
+        }
+
+        .pedestal-title {
+            font-weight: 800;
+            margin-bottom: 25px;
+            font-size: 1.2em;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pedestal-title i { color: #ffd700; }
+        .pedestal-flex {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 15px;
+            height: 180px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        .pedestal-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90px;
+            position: relative;
+        }
+        .pedestal-rank-avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: 4px solid #ccc;
+            margin-bottom: 8px;
+            background: #eee;
+            object-fit: cover;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        .pedestal-item:hover .pedestal-rank-avatar {
+            transform: scale(1.1);
+        }
+        .pedestal-rank-1 .pedestal-rank-avatar { 
+            border-color: #ffd700; 
+            width: 75px; 
+            height: 75px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            position: relative;
+        }
+        .pedestal-rank-1 .pedestal-rank-avatar-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .pedestal-rank-1 .pedestal-rank-avatar-wrapper::before {
+            content: '\f521';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: 28px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .pedestal-rank-2 .pedestal-rank-avatar { border-color: #c0c0c0; }
+        .pedestal-rank-3 .pedestal-rank-avatar { border-color: #cd7f32; }
+
+        .pedestal-box {
+            width: 100%;
+            background: #0088cc;
+            color: white;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px 12px 0 0;
+            font-size: 1.5em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: inset 0 2px 10px rgba(255,255,255,0.2);
+        }
+        .pedestal-rank-1 .pedestal-box { height: 90px; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #5c4400; }
+        .pedestal-rank-2 .pedestal-box { height: 65px; background: linear-gradient(135deg, #c0c0c0, #8e8e8e); }
+        .pedestal-rank-3 .pedestal-box { height: 45px; background: linear-gradient(135deg, #cd7f32, #a0522d); }
+
+        .pedestal-name {
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-top: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            color: var(--text-color);
+        }
+        .pedestal-score {
+            font-size: 0.7em;
+            color: #0088cc;
+            font-weight: bold;
+        }
+        .expanded-tops-btn {
+            background: transparent;
+            border: 1px solid #0088cc;
+            color: #0088cc;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .expanded-tops-btn:active {
+            background: rgba(0, 136, 204, 0.1);
+        }
+        .expanded-tops-btn2 {
+            background: transparent;
+            border: 1px solid #0088cc;
+            color: #0088cc;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .expanded-tops-btn3 {
+            background: transparent;
+            border: 1px solid #0088cc;
+            color: #0088cc;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 10%;
+            transition: all 0.2s;
+            margin-top: 15px;
+        }
+
+        /* Expanded Tops Modal */
+        #tops-modal .modal-content {
+            max-width: 450px;
+            width: 90%;
+            padding: 20px;
+        }
+        .league-top-section {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .league-top-header {
+            font-weight: bold;
+            border-bottom: 2px solid #0088cc;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            color: #0088cc;
+        }
+        .top-player-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .top-player-row:last-child { border-bottom: none; }
+        .top-player-info { display: flex; align-items: center; gap: 10px; }
+        .top-player-rank { font-weight: bold; width: 20px; }
+        .top-player-name { font-size: 0.9em; }
+        .top-player-score { font-weight: bold; color: #0088cc; font-size: 0.9em; }
+
+        /* Profile Modal Styles */
+        #profile-modal .modal-content {
+            max-width: 400px;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        .profile-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #0088cc;
+            margin-bottom: 15px;
+        }
+        .profile-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+        .profile-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .profile-info-row:last-child {
+            border-bottom: none;
+        }
+        .profile-info-label {
+            color: var(--secondary-text);
+            font-size: 0.9em;
+        }
+        .profile-info-value {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .profile-close-btn {
+        }
+        .profile-close-btn:active {
+            background: #0077b3;
+        }
+
+        /* Promo Styles */
+        .promo-link { color: #0088cc; cursor: pointer; font-size: 0.85em; text-decoration: underline; text-decoration-style: dotted; margin: 10px 0; display: inline-block; }
+        .promo-container { display: none; margin-top: 8px; text-align: left; }
+        .promo-input-wrapper { position: relative; }
+        .promo-input { width: 100%; padding: 10px; border: 2px solid var(--input-border); border-radius: 10px; background: var(--input-bg); color: var(--text-color); box-sizing: border-box; font-size: 0.9em; }
+        .promo-input.invalid { border-color: #f44336; }
+        .promo-input.valid { border-color: #4caf50; }
+        .promo-error { color: #f44336; font-size: 0.8em; margin-top: 5px; display: none; align-items: center; gap: 5px; }
+        .old-price { text-decoration: line-through; text-decoration-color: #f44336; margin-right: 8px; color: var(--secondary-text); }
+        .new-price { color: #4caf50; font-weight: bold; }
+
+        /* Loader Screen */
+        #loader-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #0f172a;
+            z-index: 9999;
+            transition: opacity 0.8s ease-out;
+            opacity: 1;
+        }
+        .loader-word {
+            display: flex;
+            gap: 15px;
+            font-size: 2rem;
+            align-items: center;
+        }
+        .loader-letter {
+            opacity: 0;
+            color: #f8fafc;
+            animation: reveal-and-hide 5s ease-in-out forwards;
+        }
+        .loader-robot {
+            font-size: 2rem;
+            color: #0088cc;
+            opacity: 0;
+            animation: robot-float 5s ease-in-out forwards;
+        }
+        .loader-letter:nth-child(1) { animation-delay: 0.1s; }
+        .loader-letter:nth-child(2) { animation-delay: 0.2s; }
+        .loader-letter:nth-child(3) { animation-delay: 0.3s; }
+        .loader-letter:nth-child(4) { animation-delay: 0.4s; }
+        .loader-letter:nth-child(5) { animation-delay: 0.5s; }
+        .loader-letter:nth-child(6) { animation-delay: 0.6s; }
+
+        @keyframes reveal-and-hide {
+            0% { opacity: 0; transform: translateY(20px); }
+            20%, 80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        @keyframes robot-float {
+            0% { opacity: 0; transform: scale(0) rotate(-45deg); }
+            20% { opacity: 1; transform: scale(1.1) rotate(0deg); }
+            40%, 60% { transform: translateY(-10px) rotate(5deg); color: #ffffff; }
+            80% { opacity: 1; transform: scale(1) translateY(0); }
+            100% { opacity: 0; transform: scale(0.5) translateY(-20px); }
+        }
+        #app-content.loader-hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Loader Screen -->
+    <div id="loader-screen">
+        <div class="loader-word">
+            <i class="fa-solid fa-s loader-letter"></i>
+            <i class="fa-solid fa-t loader-letter"></i>
+            <i class="fa-solid fa-i loader-letter"></i>
+            <i class="fa-solid fa-m loader-letter"></i>
+            <i class="fa-solid fa-robot loader-robot"></i>
+        </div>
+    </div>
+
+    <div id="snow-container"></div>
+
+    <!-- Registration Modal -->
+    <div id="registration-modal">
+        <div id="registration-modal-content">
+            <div class="reg-title">Ro'yxatdan o'tish</div>
+            <div class="reg-subtitle">Iltimos, davom etish uchun ma'lumotlarni to'ldiring</div>
+            <input type="text" id="reg-first-name" class="reg-input" pattern="[A-Za-z]+" placeholder="Ism" required>
+            <input type="text" id="reg-last-name" class="reg-input" pattern="[A-Za-z]+" placeholder="Familiya" required>
+            <select id="reg-class" class="reg-input" style="cursor: pointer;">
+                <option value="" disabled selected>Sinfingizni tanlang</option>
+                <option value="5.01">5.01 sinf</option>
+                <option value="5.02">5.02 sinf</option>
+                <option value="6.01">6.01 sinf</option>
+                <option value="6.02">6.02 sinf</option>
+                <option value="7.01">7.01 sinf</option>
+                <option value="7.02">7.02 sinf</option>
+                <option value="8.01">8.01 sinf</option>
+                <option value="8.02">8.02 sinf</option>
+                <option value="8.03">8.03 sinf</option>
+                <option value="9.01">9.01 sinf</option>
+                <option value="9.02">9.02 sinf</option>
+                <option value="9.03">9.03 sinf</option>
+                <option value="10.01">10.01 sinf</option>
+                <option value="10.02">10.02 sinf</option>
+                <option value="10.03">10.03 sinf</option>
+                <option value="11">11 sinf</option>
+            </select>
+            <button class="reg-btn" onclick="registerUser()">Ro'yxatdan o'tish</button>
+        </div>
+    </div>
+
+    <div id="app-content" style="display: none;">
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar-container">
+                    <img id="avatar" class="avatar" src="https://ui-avatars.com/api/?name=U&background=random" alt="avatar">
+                    <img src="/static/images/santa-hat.png" class="santa-hat" alt="santa-hat">
+                </div>
+                <div style="display: flex; flex-direction: column;">
+                    <div class="username" id="username">
+                        <span id="display-name">O'quvchi</span>
+                        <i id="user-medal" class="fa-solid fa-medal medal-none"></i>
+                    </div>
+                    <div id="nick-container" style="font-size: 0.85em; color: var(--secondary-text); margin-top: 2px;"><i class="fa-solid fa-graduation-cap"></i>
+                        Sinf: <span id="class-display" style="font-weight: bold; color: #0088cc;">...</span>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="snow-toggle active" onclick="toggleSnow()" id="snow-toggle-icon">
+                    <i class="fa-solid fa-snowflake"></i>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()" id="theme-icon">
+                    <i class="fa-solid fa-moon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="balance-container" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+
+            <div class="balance" style="margin-bottom: 0;">
+                <i class="fa-solid fa-star fa-bounce" style="color: #ffca28;"></i>
+                Reyting: <span id="user-rating">0</span>
+                <div id="user-status-display" style="font-size: 0.7em; color: var(--secondary-text); margin-top: 4px; font-weight: normal;"><i class="fa-solid fa-medal"></i> Status: <span id="status-text" style="font-weight: bold; color: #0088cc;">...</span></div>
+                <div id="user-league-display" style="font-size: 0.7em; color: var(--secondary-text); margin-top: 4px; font-weight: normal;"><i class="fa-solid fa-trophy"></i> Liga: <span id="league-text" style="font-weight: bold; color: #0088cc;">...</span></div>
+                <div id="user-league-rank-display" style="font-size: 0.7em; color: var(--secondary-text); margin-top: 4px; font-weight: normal;"><i class="fa-solid fa-ranking-star"></i> Ligadagi o'rin: <span id="league-rank-text" style="font-weight: bold; color: #0088cc;">---</span></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <button class="buy-btn" onclick="openProfileModal()" style="padding: 8px 15px; font-size: 0.7em;">
+                    <i class="fa-solid fa-user"></i> Profil
+                </button>
+            </div>
+
+        </div>
+
+        <div class="nav-tabs" id="main-tabs">
+            <div class="nav-tab active" onclick="switchSection('shop')"><i class="fa-solid fa-list-check"></i> Menyu</div>
+            <div class="nav-tab" onclick="switchSection('purchases')"><i class="fa-solid fa-clipboard-check"></i> Vazifalar</div>
+        </div>
+
+        <div id="shop-section" class="section active">
+            <!-- Pedestal Section -->
+            <div class="pedestal-container" id="league-pedestal">
+                <div class="pedestal-title">Top 3 o'quvchi</div>
+                <div class="pedestal-flex" id="pedestal-items">
+                    <!-- Rank 2 -->
+                    <div class="pedestal-item pedestal-rank-2">
+                        <img class="pedestal-rank-avatar" id="top-2-avatar" src="https://ui-avatars.com/api/?name=2&background=random">
+                        <div class="pedestal-box">2</div>
+                        <div class="pedestal-name" id="top-2-name">Bo'sh</div>
+                        <div class="pedestal-score" id="top-2-score">0 ★</div>
+                    </div>
+                    <!-- Rank 1 -->
+                    <div class="pedestal-item pedestal-rank-1">
+                        <div class="pedestal-rank-avatar-wrapper">
+                            <img class="pedestal-rank-avatar" id="top-1-avatar" src="https://ui-avatars.com/api/?name=1&background=random">
+                        </div>
+                        <div class="pedestal-box">1</div>
+                        <div class="pedestal-name" id="top-1-name">Bo'sh</div>
+                        <div class="pedestal-score" id="top-1-score">0 ★</div>
+                    </div>
+                    <!-- Rank 3 -->
+                    <div class="pedestal-item pedestal-rank-3">
+                        <img class="pedestal-rank-avatar" id="top-3-avatar" src="https://ui-avatars.com/api/?name=3&background=random">
+                        <div class="pedestal-box">3</div>
+                        <div class="pedestal-name" id="top-3-name">Bo'sh</div>
+                        <div class="pedestal-score" id="top-3-score">0 ★</div>
+                    </div>
+                </div>
+                <button class="expanded-tops-btn" onclick="openTopsModal()"><i class="fa-solid fa-list-ol"></i> Kengaytirilgan toplar</button>
+            </div>
+
+            <!-- Season Progress Block -->
+            <!-- Блок Лиги -->
+            <div class="leagues-info-container">
+                <div class="leagues-info-title"><i class="fa-solid fa-trophy"></i> LIGALAR</div>
+                <div class="league-info-item league-bronze-item">
+                    <span class="league-info-name">Bronza ligasi</span>
+                    <span class="league-info-classes">5-6 sinf</span>
+                </div>
+                <div class="league-info-item league-silver-item">
+                    <span class="league-info-name">Kumush ligasi</span>
+                    <span class="league-info-classes">7-8 sinf</span>
+                </div>
+                <div class="league-info-item league-gold-item">
+                    <span class="league-info-name">Oltin ligasi</span>
+                    <span class="league-info-classes">9-11 sinf</span>
+                </div>
+            </div>
+
+            <!-- School Photos Block -->
+            <div class="pedestal-container2" id="school-photos-section" style="margin-top: 20px; display: block !important;">
+                <div class="pedestal-title" style="font-size: 1.1em;"><i class="fa-solid fa-school"></i> Maktabimiz rasmlari</div>
+
+                <!-- Большая фото -->
+                <div style="text-align: center; margin-bottom: 2px;">
+                    <img src="/static/images/school5.jpg" class='imagegl' style='width: 120px; border-radius: 50%; height: 120px; object-fit: cover;'>
+                </div>
+
+                <!-- Контейнер для маленьких фото с уменьшенной высотой -->
+                <div id="school-photos-container" class="bounceCardsContainer" style="height: 140px; margin-top: 0;">
+                    <!-- Cards will be injected by JS -->
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: 0 auto;">
+                  <a href="https://t.me/+sQ5NwA8ZJ-kxY2Y6" target="_blank" 
+                     class="expanded-tops-btn2" 
+                     style="font-size: 12px; display: inline-block; text-decoration: none; width: 75%;">
+                    <i class="fa-brands fa-telegram" style="color: #74C0FC;"></i> 
+                    Telegram kanal
+                  </a>
+                  <a href="https://www.youtube.com/@SamarqandtumanIM" target="_blank" 
+                     class="expanded-tops-btn2" 
+                     style="font-size: 12px; display: inline-block; text-decoration: none; width: 75%;">
+                    <i class="fa-brands fa-youtube" style="color: #ea0606;"></i>
+                    YouTube kanal
+                  </a>
+                </div>
+
+                <div style=" margin-top: 15px; font-size: 0.8em; color: var(--secondary-text);">
+                  Samarqand Tuman Ixtisoslashtrilgan Maktab
+                </div>
+            </div>
+
+            <div id="season-block" class="season-progress-container" style="display: none;">
+                <div class="season-progress-header">
+                    <div class="season-progress-title"><i class="fa-solid fa-hourglass-end"></i> MAVSUM TUGASHI</div>
+                    <div id="season-days-left" class="season-progress-days">... kun</div>
+                </div>
+                <div class="season-progress-bar">
+                    <div id="season-bar-fill" class="season-progress-fill"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: 0 auto;">
+                  <a href="https://t.me/stimora_lab/17" target="_blank" 
+                     class="expanded-tops-btn3" 
+                     style="font-size: 12px; display: inline-block; text-decoration: none; width: 80%;">
+                      <i class="fa-solid fa-circle-info"></i> 
+                    Nima uchun bu?
+                  </a>
+                  <a href="https://t.me/stimora_lab/17" target="_blank" 
+                     class="expanded-tops-btn3" 
+                     style="font-size: 12px; display: inline-block; text-decoration: none; width: 80%;">
+                      <i class="fa-solid fa-circle-question"></i>
+                    Yordam kerakmi?
+                  </a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Tasks / Bundles Section -->
+        <div id="purchases-section" class="section">
+            <div class="nav-tabs" style="margin-bottom: 15px;">
+                <div class="nav-tab active" onclick="switchBundleTab('active')"><i class="fa-solid fa-layer-group"></i> Aktiv</div>
+                <div class="nav-tab" onclick="switchBundleTab('completed')"><i class="fa-solid fa-check-double"></i> Bajarilgan</div>
+            </div>
+
+            <!-- Active Bundles Container -->
+            <div id="active-bundles-container">
+                <!-- Bundles will be rendered here dynamically -->
+            </div>
+
+            <!-- Completed Bundles Container -->
+            <div id="completed-bundles-container" style="display: none;">
+                <!-- Completed bundles will be rendered here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Button -->
+    <div id="admin-btn" class="admin-link" onclick="openAdmin()">
+        <i class="fa-solid fa-chart-line"></i> Admin panel
+    </div>
+
+    <!-- Tasks Play Modal -->
+    <div id="tasks-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Vazifalarni yechish</div>
+                <div class="task-progress" id="task-progress-text">1 / 5</div>
+            </div>
+            <div id="bundle-timer-container" class="bundle-timer" style="display: none;">
+                <i class="fa-solid fa-clock"></i>
+                <span id="bundle-timer-text">00:00</span>
+            </div>
+            <div id="task-modal-body">
+                <div class="task-question" id="task-modal-question">Yuklanmoqda...</div>
+                <div id="task-modal-options"></div>
+            </div>
+            <div class="slider-controls" style="margin-top: 25px;">
+                <button id="task-prev-btn" class="slider-btn" onclick="prevTask()">
+                    <i class="fa-solid fa-chevron-left"></i> Orqaga
+                </button>
+                <button id="task-next-btn" class="slider-btn" onclick="nextTask()">
+                    Keyingi <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+            <button class="modal-btn btn-later" style="width: 100%; margin-top: 15px; display: none;" onclick="closeTasksModal()">Yopish</button>
+        </div>
+    </div>
+
+    <!-- Titles Modal -->
+    <div id="titles-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="titles-modal-title"><i class="fa-brands fa-openai fa-spin"></i> Sizning unvonlaringiz</h3>
+            <div id="titles-list-view">
+                <div id="owned-titles" style="margin-bottom: 20px; font-size: 1.5em;"></div>
+                <button class="modal-btn btn-submit" style="width: 100%;" onclick="showTitlePurchase()">Yangi unvon sotib olish</button>
+            </div>
+            <div id="title-purchase-view" style="display: none;">
+                <input type="text" id="custom-title-input" class="promo-input" placeholder="Unvon matnini kiriting" oninput="updateTitlePreview()" maxlength="16">
+                <div id="iro-color-picker" style="margin: 20px auto; display: flex; justify-content: center;"></div>
+
+                <div class="preview-box">
+                    Unvoningiz qanday ko'rinadi:<br>
+                    <span id="preview-nickname" style="font-weight: bold; font-size: 1.3em;">Laqab</span> <span id="preview-title" style="color: #ff0000; font-weight: bold; font-size: 1.3em;">[Unvon]</span>
+                </div>
+
+                <div style="font-size: 0.9em; margin-bottom: 15px; color: var(--secondary-text);">Narx: 25 <i class="fa-solid fa-coins"></i></div>
+
+                <div class="modal-btns">
+                    <button class="modal-btn btn-submit" onclick="executeTitlePurchase()">Sotib olish</button>
+                </div>
+            </div>
+            <button class="modal-btn btn-later" style="width: 100%; margin-top: 10px;" onclick="closeTitlesModal()">Yopish</button>
+        </div>
+    </div>
+
+    <!-- Expanded Tops Modal -->
+    <div id="tops-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Barcha ligalar</div>
+                <div class="task-progress" onclick="closeTopsModal()" style="cursor: pointer;"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div id="tops-modal-body" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <!-- Tops will be rendered here -->
+            </div>
+            <button class="modal-btn btn-later" style="width: 100%; margin-top: 15px;" onclick="closeTopsModal()">Yopish</button>
+        </div>
+    </div>
+        <!-- Stats Modal for Bundle Results -->
+        <div id="stats-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="stats-title" id="stats-bundle-name">To'plam natijalari</div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stats-item">
+                        <div class="stats-item-label">Jami savollar</div>
+                        <div class="stats-item-value" id="stats-total">0</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-item-label">To'g'ri javoblar</div>
+                        <div class="stats-item-value correct" id="stats-correct">0</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-item-label">Noto'g'ri javoblar</div>
+                        <div class="stats-item-value incorrect" id="stats-incorrect">0</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-item-label">Olingan reyting</div>
+                        <div class="stats-item-value rating" id="stats-rating">0</div>
+                    </div>
+                </div>
+                <div class="stats-progress">
+                    <div class="stats-progress-bar">
+                        <div class="stats-progress-fill" id="stats-accuracy-bar" style="width: 0%;"></div>
+                    </div>
+                    <div class="stats-progress-text">
+                        <span>Aniqlik</span>
+                        <span id="stats-accuracy-text">0%</span>
+                    </div>
+                </div>
+                <button class="modal-btn btn-submit" style="width: 100%;" onclick="closeStatsModal()">Yopish</button>
+            </div>
+        </div>
+    </div>
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="profile-close-btn" onclick="closeProfileModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            <img id="profile-avatar-large" class="profile-avatar-large" src="https://ui-avatars.com/api/?name=U&background=random" alt="avatar">
+            <div class="profile-name" id="profile-full-name">O'quvchi</div>
+            <div style="color: var(--secondary-text); margin-bottom: 20px;" id="profile-user-id">ID: ---</div>
+
+            <div style="text-align: left;">
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-user"></i> Ism</span>
+                    <span class="profile-info-value" id="profile-first-name">---</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-user"></i> Familiya</span>
+                    <span class="profile-info-value" id="profile-last-name">---</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-graduation-cap"></i> Sinf</span>
+                    <span class="profile-info-value" id="profile-class">---</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-star"></i> Reyting</span>
+                    <span class="profile-info-value" id="profile-rating">0</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-medal"></i> Status</span>
+                    <span class="profile-info-value" id="profile-status">---</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-trophy"></i> Liga</span>
+                    <span class="profile-info-value" id="profile-league">---</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="profile-info-label"><i class="fa-solid fa-ranking-star"></i> Ligadagi o'rin</span>
+                    <span class="profile-info-value" id="profile-league-rank">---</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="success-title"><i class="fa-solid fa-circle-check fa-bounce" style="color: #11ff00;"></i> Buyurtma yaratildi!</h2>
+            <div id="success-message-content"></div>
+            <button class="modal-btn btn-submit" style="width: 100%;" onclick="closeSuccessModal()">Ajoyib</button>
+        </div>
+    </div>
+
+    <!-- Buy Modal -->
+    <div id="buy-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="text-align: center;"><i class="fa-solid fa-cart-shopping"></i> Xaridni tasdiqlash</h3>
+            <h3 id="buy-item-name">Mahsulot</h3>
+            <div id="buy-item-price-container" style="font-size: 1.2em; margin-bottom: 20px;">
+                <span id="buy-item-price">0</span> <i class="fa-solid fa-coins"></i>
+            </div>
+
+            <div id="promo-section">
+                <span class="promo-link" onclick="showPromoInput()"><i class="fa-solid fa-ticket fa-beat"></i> Menda promokod bor</span>
+                <div id="promo-container" class="promo-container">
+                    <div class="promo-input-wrapper">
+                        <input type="text" id="promo-code" class="promo-input" placeholder="Promokodni kiriting" oninput="validatePromo()">
+                    </div>
+                    <div id="promo-error" class="promo-error">
+                        <i class="fa-solid fa-circle-exclamation"></i> Promokod topilmadi!
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-btns" style="margin-top: 20px;">
+                <button class="modal-btn btn-submit" id="confirm-buy-btn">Sotib olish</button>
+                <button class="modal-btn btn-later" onclick="closeBuyModal()">Bekor qilish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="review-modal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fa-solid fa-hand-holding-heart"></i> Iltimos, fikringizni qoldiring</h3>
+            <p style="font-size: 0.9em; color: #666;">Bu bizga yaxshilanishimizga yordam beradi <i class="fa-solid fa-chart-line"></i></p>
+            <div class="stars" id="review-stars">
+                <span class="star" data-value="1">★</span>
+                <span class="star" data-value="2">★</span>
+                <span class="star" data-value="3">★</span>
+                <span class="star" data-value="4">★</span>
+                <span class="star" data-value="5">★</span>
+            </div>
+            <textarea id="review-text" class="review-textarea" placeholder="Fikringiz..."></textarea>
+            <div class="modal-btns">
+                <button class="modal-btn btn-submit" onclick="submitReview()">Yuborish</button>
+                <button class="modal-btn btn-later" onclick="closeReviewModal()">Keyinroq</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" style="display:none;"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+    <div id="error-msg"><i class="fa-solid fa-robot"></i> Iltimos, ushbu ilovani Telegram-bot orqali oching.</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        let userPurchases = [];
+        let currentPurchaseFilter = 'pending';
+        let currentCategory = 'all';
+        let allItems = [];
+        let globalUserId = null;
+        let isProcessing = false;
+        let selectedStars = 0;
+        let hasUserReviewed = false;
+
+        let currentTaskIndex = 0;
+        let selectedOptions = {};
+        let allTasks = [];
+
+        let currentBundle = null;
+        let currentBundleQuestions = [];
+        let currentQuestionIdx = 0;
+        let bundleScore = 0;
+        let bundleCorrect = 0;
+        let bundleAnswers = {};
+        let bundleTimerInterval = null;
+        let bundleTimeRemaining = 0;
+
+        let profileData = {
+            first_name: '',
+            last_name: '',
+            class_name: '',
+            rating: 0,
+            status: 'O\'quvchi',
+            league: null,
+            league_place: null,
+            league_rank: null,
+            photo_url: ''
+        };
+
+        function initSchoolPhotos() {
+            console.log("🎯 initSchoolPhotos ishga tushdi");
+
+            const schoolPhotos = [
+                "/static/images/school1.jpg",
+                "/static/images/school2.jpg", 
+                "/static/images/school3.jpg",
+                "/static/images/school4.jpg"
+            ];
+
+            const container = document.getElementById('school-photos-section');
+            if (!container) {
+                console.error("❌ school-photos-section topilmadi!");
+                return;
+            }
+
+            console.log("✅ Maktab rasmlari bloki topildi");
+
+            container.style.display = 'block';
+            container.style.visibility = 'visible';
+            container.style.opacity = '1';
+
+            const photosContainer = document.getElementById('school-photos-container');
+            if (!photosContainer) {
+                console.error("❌ Rasm konteyneri topilmadi!");
+                return;
+            }
+
+            console.log("✅ Rasm konteyneri topildi");
+
+            photosContainer.innerHTML = '';
+
+            if (typeof gsap === 'undefined') {
+                console.warn("⚠ GSAP yuklanmagan, oddiy versiyadan foydalanamiz");
+                createSimpleSchoolPhotos(photosContainer, schoolPhotos);
+                return;
+            }
+
+            console.log("✅ GSAP mavjud");
+
+            const transformStyles = [
+                'rotate(10deg) translate(-145px, -30px)',
+                'rotate(0deg) translate(-75px, -40px)',
+                'rotate(-5deg) translate(-5px, -40px)',
+                'rotate(-20deg) translate(65px, -30px)'
+            ];
+
+            schoolPhotos.forEach((src, idx) => {
+                const card = document.createElement('div');
+                card.className = `card card-${idx}`;
+                card.style.position = 'absolute';
+                card.style.width = '70px';
+                card.style.height = '70px';
+                card.style.border = '2px solid #fff';
+                card.style.borderRadius = '50%';
+                card.style.overflow = 'hidden';
+                card.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.3)';
+                card.style.cursor = 'pointer';
+                card.style.zIndex = '1';
+                card.style.opacity = '0';
+
+                card.style.left = '50%';
+                card.style.top = '40%';
+                card.style.transform = 'translate(-50%, -50%) scale(0)';
+
+                const img = document.createElement('img');
+                img.className = 'image';
+                img.src = src;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.alt = `Maktab ${idx + 1}`;
+
+                img.onerror = function() {
+                    console.error(`❌ Yuklash muvaffaqiyatsiz: ${src}`);
+                    this.style.display = 'none';
+                    const fallbackDiv = document.createElement('div');
+                    fallbackDiv.style.width = '100%';
+                    fallbackDiv.style.height = '100%';
+                    fallbackDiv.style.backgroundColor = '#0088cc';
+                    fallbackDiv.style.display = 'flex';
+                    fallbackDiv.style.alignItems = 'center';
+                    fallbackDiv.style.justifyContent = 'center';
+                    fallbackDiv.style.color = 'white';
+                    fallbackDiv.style.fontSize = '24px';
+                    fallbackDiv.style.fontWeight = 'bold';
+                    fallbackDiv.innerHTML = `${idx + 1}`;
+                    card.appendChild(fallbackDiv);
+                };
+
+                img.onload = function() {
+                    console.log(`✅ Rasm ${idx + 1} yuklandi`);
+                };
+
+                card.appendChild(img);
+                photosContainer.appendChild(card);
+
+                gsap.to(card, {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.8,
+                    delay: 0.5 + (idx * 0.1),
+                    ease: 'back.out(1.4)',
+                    onComplete: function() {
+                        gsap.to(card, {
+                            duration: 0.6,
+                            ease: 'power2.out',
+                            transform: transformStyles[idx] || 'none'
+                        });
+
+                        card.addEventListener('mouseenter', function() {
+                            card.style.zIndex = '10';
+                            gsap.to(card, {
+                                duration: 0.3,
+                                scale: 1.1,
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)',
+                                ease: 'power2.out'
+                            });
+                        });
+
+                        card.addEventListener('mouseleave', function() {
+                            card.style.zIndex = '1';
+                            gsap.to(card, {
+                                duration: 0.3,
+                                scale: 1,
+                                boxShadow: '0 6px 15px rgba(0, 0, 0, 0.3)',
+                                ease: 'power2.out'
+                            });
+                        });
+                    }
+                });
+            });
+
+            console.log("✅ Maktab rasmlari muvaffaqiyatli yaratildi");
+        }
+
+        function createSimpleSchoolPhotos(container, photos) {
+            photos.forEach((src, idx) => {
+                const card = document.createElement('div');
+                card.className = 'simple-card';
+                card.style.position = 'absolute';
+                card.style.width = '100px';
+                card.style.height = '100px';
+                card.style.border = '3px solid #fff';
+                card.style.borderRadius = '12px';
+                card.style.overflow = 'hidden';
+                card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+
+                const angle = (idx / photos.length) * 2 * Math.PI;
+                const radius = 90;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+
+                card.style.left = `calc(50% + ${x}px)`;
+                card.style.top = `calc(50% + ${y}px)`;
+                card.style.transform = `translate(-50%, -50%) rotate(${angle * (180/Math.PI)}deg)`;
+
+                const img = document.createElement('img');
+                img.src = src;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.alt = `Maktab ${idx + 1}`;
+
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.style.width = '100%';
+                    fallback.style.height = '100%';
+                    fallback.style.backgroundColor = '#0088cc';
+                    fallback.style.display = 'flex';
+                    fallback.style.alignItems = 'center';
+                    fallback.style.justifyContent = 'center';
+                    fallback.style.color = 'white';
+                    fallback.style.fontSize = '20px';
+                    fallback.innerHTML = `Mkt ${idx + 1}`;
+                    card.appendChild(fallback);
+                };
+
+                card.appendChild(img);
+                container.appendChild(card);
+
+                card.style.opacity = '0';
+                card.style.transition = 'opacity 0.5s';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                }, idx * 100);
+            });
+        }
+
+        function openProfileModal() {
+            const modal = document.getElementById('profile-modal');
+            const avatarImg = document.getElementById('avatar');
+
+            document.getElementById('profile-avatar-large').src = avatarImg.src;
+            document.getElementById('profile-full-name').innerText = profileData.first_name && profileData.last_name 
+                ? `${profileData.first_name} ${profileData.last_name}` 
+                : 'O\'quvchi';
+            document.getElementById('profile-user-id').innerText = `ID: ${globalUserId || '---'}`;
+            document.getElementById('profile-first-name').innerText = profileData.first_name || '---';
+            document.getElementById('profile-last-name').innerText = profileData.last_name || '---';
+            document.getElementById('profile-class').innerText = profileData.class_name || '---';
+            document.getElementById('profile-rating').innerText = profileData.rating || '0';
+            document.getElementById('profile-status').innerText = profileData.status || 'O\'quvchi';
+            document.getElementById('profile-league').innerText = profileData.league || '---';
+            document.getElementById('profile-league-rank').innerText = profileData.league_rank ? `#${profileData.league_rank}` : '---';
+
+            modal.style.display = 'block';
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profile-modal').style.display = 'none';
+        }
+
+        function openBundle(bundle) {
+            if (!bundle || !bundle.questions) {
+                tg.showAlert("Xato: to'plam ma'lumotlari yuklanmadi");
+                return;
+            }
+
+            // Clear previous state when opening a new bundle
+            clearBundleState();
+            stopBundleTimer();
+
+            currentBundle = bundle;
+            currentBundleQuestions = bundle.questions;
+            currentQuestionIdx = 0;
+            bundleScore = 0;
+            bundleCorrect = 0;
+            bundleAnswers = {};
+
+            // Initialize timer if bundle has time_limit
+            const timerContainer = document.getElementById('bundle-timer-container');
+            if (bundle.time_limit && bundle.time_limit > 0) {
+                timerContainer.style.display = 'flex';
+                startBundleTimer(bundle.time_limit);
+            } else {
+                timerContainer.style.display = 'none';
+            }
+
+            showBundleQuestion();
+            document.getElementById('tasks-modal').style.display = 'block';
+        }
+
+        function startBundleTimer(minutes) {
+            stopBundleTimer();
+            bundleTimeRemaining = minutes * 60;
+            updateBundleTimerDisplay();
+
+            bundleTimerInterval = setInterval(async () => {
+                bundleTimeRemaining--;
+                updateBundleTimerDisplay();
+
+                if (bundleTimeRemaining <= 0) {
+                    stopBundleTimer();
+                    tg.showAlert("Vaqt tugadi! To'plam avtomatik ravishda yakunlandi.");
+                    await finishBundle(true); // Force finish with time expired
+                }
+            }, 1000);
+        }
+
+        function stopBundleTimer() {
+            if (bundleTimerInterval) {
+                clearInterval(bundleTimerInterval);
+                bundleTimerInterval = null;
+            }
+        }
+
+        function updateBundleTimerDisplay() {
+            const timerText = document.getElementById('bundle-timer-text');
+            const timerContainer = document.getElementById('bundle-timer-container');
+
+            if (!timerText) return;
+
+            const minutes = Math.floor(bundleTimeRemaining / 60);
+            const seconds = bundleTimeRemaining % 60;
+            timerText.innerText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Update timer color based on remaining time
+            timerContainer.classList.remove('warning', 'danger');
+            if (bundleTimeRemaining <= 30) {
+                timerContainer.classList.add('danger');
+            } else if (bundleTimeRemaining <= 60) {
+                timerContainer.classList.add('warning');
+            }
+        }
+
+        function closeTasksModal() {
+            stopBundleTimer();
+            // Save state before closing
+            if (currentBundle && bundleAnswers !== undefined) {
+                saveBundleState();
+            }
+            document.getElementById('tasks-modal').style.display = 'none';
+        }
+
+        function showBundleQuestion() {
+            if (!currentBundleQuestions || currentBundleQuestions.length === 0) {
+                tg.showAlert("Xato: savollar topilmadi");
+                closeTasksModal();
+                return;
+            }
+
+            const q = currentBundleQuestions[currentQuestionIdx];
+            const modal = document.getElementById('tasks-modal');
+
+            const titleEl = modal.querySelector('.modal-title');
+            if (titleEl) {
+                titleEl.innerText = currentBundle.name || 'Vazifalar to\'plami';
+            }
+
+            const progressEl = modal.querySelector('.task-progress');
+            if (progressEl) {
+                progressEl.innerText = `Savol ${currentQuestionIdx + 1}/${currentBundleQuestions.length}`;
+            }
+
+            const questionEl = modal.querySelector('.task-question');
+            if (questionEl) {
+                questionEl.innerText = q.question || 'Savol topilmadi';
+            }
+
+            const optionsContainer = modal.querySelector('#task-modal-options');
+            optionsContainer.innerHTML = '';
+
+            if (q.options) {
+                const options = q.options.split('|');
+                options.forEach((opt, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'task-option';
+                    div.innerHTML = `<div class="task-option-circle"></div><span>${opt}</span>`;
+                    div.onclick = () => selectBundleOption(idx);
+                    optionsContainer.appendChild(div);
+                });
+            }
+
+            const sliderControls = modal.querySelector('.slider-controls');
+            sliderControls.innerHTML = '';
+
+            if (currentQuestionIdx > 0) {
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'slider-btn';
+                prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i> Orqaga';
+                prevBtn.onclick = () => {
+                    currentQuestionIdx--;
+                    showBundleQuestion();
+                    saveBundleState();
+                };
+                sliderControls.appendChild(prevBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'slider-btn';
+
+            if (currentQuestionIdx < currentBundleQuestions.length - 1) {
+                nextBtn.innerHTML = 'Keyingi <i class="fa-solid fa-chevron-right"></i>';
+                nextBtn.onclick = () => {
+                    if (bundleAnswers[currentQuestionIdx] === undefined) {
+                        tg.showAlert("Iltimos, javobni tanlang");
+                        return;
+                    }
+                    currentQuestionIdx++;
+                    showBundleQuestion();
+                    saveBundleState();
+                };
+            } else {
+                nextBtn.innerHTML = 'Yakunlash <i class="fa-solid fa-check"></i>';
+                nextBtn.onclick = finishBundle;
+            }
+
+            sliderControls.appendChild(nextBtn);
+
+            // Add event listeners for saving state
+            setupStateSaving();
+        }
+
+        function setupStateSaving() {
+            // Save state when clicking on options
+            const optionsContainer = document.querySelector('#task-modal-options');
+            if (optionsContainer) {
+                optionsContainer.querySelectorAll('.task-option').forEach((opt) => {
+                    opt.onclick = () => {
+                        const idx = Array.from(optionsContainer.querySelectorAll('.task-option')).indexOf(opt);
+                        selectBundleOption(idx);
+                        saveBundleState();
+                    };
+                });
+            }
+        }
+
+        async function finishBundle(forceFinish = false) {
+            if (!forceFinish && bundleAnswers[currentQuestionIdx] === undefined) {
+                tg.showAlert("Iltimos, joriy savolga javob bering");
+                return;
+            }
+
+            console.log('=== FINISH BUNDLE DEBUG ===');
+            console.log('globalUserId:', globalUserId);
+            console.log('currentBundle:', currentBundle);
+            console.log('currentBundle.item_id:', currentBundle ? currentBundle.item_id : null);
+            console.log('bundleScore:', bundleScore);
+            console.log('bundleCorrect:', bundleCorrect);
+            console.log('currentBundleQuestions.length:', currentBundleQuestions.length);
+
+            if (!globalUserId) {
+                tg.showAlert("Xato: Foydalanuvchi ID si aniqlanmadi");
+                return;
+            }
+
+            if (!currentBundle || !currentBundle.item_id) {
+                tg.showAlert("Xato: To'plam ma'lumotlari aniqlanmadi");
+                return;
+            }
+
+            // Stop the timer
+            stopBundleTimer();
+
+            // Calculate final score from bundleAnswers
+            let calculatedScore = 0;
+            let calculatedCorrect = 0;
+            for (const [qIdx, answer] of Object.entries(bundleAnswers)) {
+                if (answer && answer.is_correct) {
+                    calculatedScore += answer.rating || 5;
+                    calculatedCorrect++;
+                }
+            }
+
+            console.log('=== FINAL SCORE CALCULATION ===');
+            console.log('bundleScore from variables:', bundleScore);
+            console.log('calculatedScore:', calculatedScore);
+            console.log('bundleCorrect from variables:', bundleCorrect);
+            console.log('calculatedCorrect:', calculatedCorrect);
+            console.log('bundleAnswers:', JSON.stringify(bundleAnswers, null, 2));
+
+            // Use calculated values for reliability
+            const finalScore = calculatedScore > 0 ? calculatedScore : bundleScore;
+            const finalCorrect = calculatedCorrect > 0 ? calculatedCorrect : bundleCorrect;
+
+            // CRITICAL: Cap the score to the maximum possible rating for this bundle
+            const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (q.rating || 5), 0);
+            const cappedScore = Math.min(finalScore, maxPossibleScore);
+
+            try {
+                const requestData = {
+                    user_id: globalUserId,
+                    score: cappedScore,
+                    task_id: currentBundle.item_id,
+                    is_correct: finalCorrect === currentBundleQuestions.length,
+                    correct_count: finalCorrect,
+                    incorrect_count: currentBundleQuestions.length - finalCorrect,
+                    answers: bundleAnswers
+                };
+
+                console.log('Sending request:', JSON.stringify(requestData));
+
+                const response = await fetch('/api/tasks/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response status:', response.status);
+
+                const result = await response.json();
+                console.log('Response result:', result);
+
+                if (response.ok && (result.success === true || result.success === undefined)) {
+                    closeTasksModal();
+                    clearBundleState();
+                    loadUserBalance();
+                    loadBundles();
+
+                    document.getElementById('success-title').innerText = "To'plam yakunlandi!";
+                    document.getElementById('success-message-content').innerHTML = `
+                        Siz <b>${currentBundleQuestions.length}</b> ta savoldan <b>${finalCorrect}</b> tasiga to'g'ri javob berdingiz.<br>
+                        Olingan reyting: <b>+${finalScore}</b>
+                    `;
+                    document.getElementById('success-modal').style.display = 'block';
+                } else {
+                    tg.showAlert('Natijalarni saqlashda xato: ' + (result.message || 'Noma\'lum xato'));
+                }
+            } catch (e) {
+                console.error('To\'plamni yakunlash xatosi:', e);
+                tg.showAlert('Natijalarni saqlashda tarmoq xatosi: ' + e.message);
+            }
+        }
+
+        function selectBundleOption(idx) {
+            const q = currentBundleQuestions[currentQuestionIdx];
+            const options = document.querySelectorAll('.task-option');
+
+            options.forEach((opt, i) => {
+                opt.classList.remove('selected');
+                if (i === idx) opt.classList.add('selected');
+            });
+
+            const isCorrect = idx === parseInt(q.correct_option);
+            const questionRating = parseInt(q.rating) || 5;
+
+            // Store previous answer state
+            const hadPreviousAnswer = bundleAnswers[currentQuestionIdx] !== undefined;
+            const wasPreviousCorrect = hadPreviousAnswer ? bundleAnswers[currentQuestionIdx].is_correct : false;
+
+            // Update answer storage
+            bundleAnswers[currentQuestionIdx] = {
+                selected: idx,
+                is_correct: isCorrect,
+                question: q.question,
+                correct_option: q.correct_option,
+                rating: questionRating
+            };
+
+            // Update score based on answer change
+            if (isCorrect) {
+                if (!wasPreviousCorrect) {
+                    bundleScore += questionRating;
+                    bundleCorrect++;
+                }
+            } else {
+                if (wasPreviousCorrect) {
+                    bundleScore -= questionRating;
+                    bundleCorrect--;
+                }
+            }
+
+            console.log('Answer selected:', { idx, isCorrect, bundleScore, bundleCorrect });
+        }
+
+        async function loadShopData() {
+            try {
+                const taskResp = await fetch(`/api/user/${globalUserId}/tasks`);
+                const tasks = await taskResp.json();
+
+                const completedIds = tasks.completed.map(t => t.task_id);
+
+                const response = await fetch('/api/items');
+                allItems = await response.json();
+
+                window.completedTaskIds = completedIds;
+
+                renderItems();
+            } catch (error) {
+                console.error("Mahsulotlarni olishda xato:", error);
+            }
+        }
+
+        async function loadUserBalance() {
+            if (!globalUserId) return;
+            try {
+                const resp = await fetch(`/api/user/${globalUserId}`);
+                const data = await resp.json();
+
+                const daysLeft = data.days_left !== undefined ? data.days_left : 30;
+                const progress = Math.min(Math.round(((30 - daysLeft) / 30) * 100), 100);
+                const fill = document.querySelector('.season-progress-fill');
+                const text = document.querySelector('.season-progress-days');
+                if (fill) fill.style.width = progress + '%';
+                if (text) text.innerText = `Qolgan kunlar: ${daysLeft}`;
+
+                const ratingEl = document.getElementById('user-rating');
+                if (ratingEl) ratingEl.innerText = data.rating || 0;
+            } catch (e) {
+                console.error("Balansni yuklashda xato:", e);
+            }
+        }
+
+        function updatePedestal(topPlayers) {
+            const container = document.querySelector('.pedestal-flex');
+            if (!container) return;
+
+            const ranks = [2, 1, 3];
+            const items = container.querySelectorAll('.pedestal-item');
+
+            ranks.forEach((rank, i) => {
+                const player = topPlayers.find(p => p.rank === rank);
+                const item = items[i];
+                if (!item) return;
+
+                const avatar = item.querySelector('.pedestal-rank-avatar');
+                const name = item.querySelector('.pedestal-name');
+                const score = item.querySelector('.pedestal-score');
+
+                if (player) {
+                    name.textContent = player.name;
+                    score.textContent = `${player.rating} ★`;
+
+                    if (player.photo && player.photo !== 'null' && player.photo !== 'undefined' && player.photo !== 'None' && player.photo !== '') {
+                        if (player.photo.startsWith('file_') || player.photo.startsWith('photos/')) {
+                            const botToken = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M";
+                            avatar.src = `https://api.telegram.org/file/bot${botToken}/${player.photo}`;
+                        } else {
+                            avatar.src = player.photo;
+                        }
+
+                        avatar.onerror = function() {
+                            console.warn(`${player.name} uchun rasm yuklanmadi: ${player.photo}`);
+                            const cachedPhoto = localStorage.getItem(`user_photo_${player.user_id}`);
+                            if (cachedPhoto) {
+                                avatar.src = cachedPhoto;
+                            } else {
+                                avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random&color=fff&size=128`;
+                            }
+                            this.onerror = null;
+                        };
+                    } else {
+                        const cachedPhoto = localStorage.getItem(`user_photo_${player.user_id}`);
+                        if (cachedPhoto) {
+                            avatar.src = cachedPhoto;
+                            avatar.onerror = function() {
+                                this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random&color=fff&size=128`;
+                                this.onerror = null;
+                            };
+                        } else {
+                            avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random&color=fff&size=128`;
+                        }
+                    }
+                } else {
+                    name.textContent = '---';
+                    score.textContent = '0 ★';
+                    avatar.src = 'https://ui-avatars.com/api/?name=?&background=ccc&color=fff&size=128';
+                }
+            });
+        }
+
+        async function initApp() {
+            initTheme();
+            const urlParams = new URLSearchParams(window.location.search);
+            const user_id = urlParams.get('user_id') || (tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null);
+            globalUserId = user_id;
+
+            if (!globalUserId) {
+                document.getElementById('loader-screen').style.display = 'none';
+                document.getElementById('error-msg').style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/user/${globalUserId}`);
+                const data = await response.json();
+
+                // Check if user is blocked
+                if (data.is_blocked) {
+                    document.getElementById('loader-screen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loader-screen').style.display = 'none';
+                        // Show blocked message
+                        const container = document.querySelector('.container');
+                        if (container) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 40px 20px; background: white; border-radius: 20px; margin: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                                    <i class="fa-solid fa-ban" style="font-size: 4em; color: #e53e3e; margin-bottom: 20px;"></i>
+                                    <h2 style="color: #e53e3e; margin-bottom: 15px;">Kirish taqiqlangan</h2>
+                                    <p style="color: #666; margin-bottom: 20px;">Siz bu botdan foydalana olmaysiz.</p>
+                                    <p style="color: #888; font-size: 0.9em;">Blokdan ochish uchun adminga yozing: @money_userrs</p>
+                                    <p style="color: #aaa; font-size: 0.8em; margin-top: 15px;">Sizning ID: ${globalUserId}</p>
+                                </div>
+                            `;
+                        }
+                    }, 800);
+                    return;
+                }
+
+                document.getElementById('loader-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loader-screen').style.display = 'none';
+                    if (data.is_registered) {
+                        showAppContent(data);
+                    } else {
+                        document.getElementById('registration-modal').style.display = 'flex';
+                    }
+                }, 800);
+            } catch (error) {
+                console.error("Foydalanuvchini olishda xato:", error);
+                document.getElementById('loader-screen').style.display = 'none';
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+
+        // Yuklangan sinfni ligaga guruhlash funksiyasi
+        function getLeagueFromClass(className) {
+            // Sinfni formatini "7.01 sinf" dan "7" ga aylantiramiz
+            const classStr = className || '';
+
+            // Сначала убираем суффикс "sinf" и любые пробелы
+            const cleanedClass = classStr.toLowerCase().replace(/\s*sinf\s*/i, '').trim();
+
+            // Затем извлекаем базовый номер класса
+            const baseClassMatch = cleanedClass.match(/^(\d+)/);
+            let baseClass = 0;
+
+            if (baseClassMatch) {
+                baseClass = parseInt(baseClassMatch[1]);
+            } else {
+                // Если не удалось извлечь, пробуем напрямую
+                baseClass = parseInt(cleanedClass) || 0;
+            }
+
+            console.log('League debug: className=', className, 'cleanedClass=', cleanedClass, 'baseClass=', baseClass);
+
+            if (baseClass === 5 || baseClass === 6) {
+                return { 
+                    league: 'Bronza ligasi', 
+                    league_place: '5-6 sinf',
+                    display_class: className
+                };
+            } else if (baseClass === 7 || baseClass === 8) {
+                return { 
+                    league: 'Kumush ligasi', 
+                    league_place: '7-8 sinf',
+                    display_class: className
+                };
+            } else if (baseClass === 9 || baseClass === 10 || baseClass === 11) {
+                return { 
+                    league: 'Oltin ligasi', 
+                    league_place: '9-11 sinf',
+                    display_class: className
+                };
+            }
+            return { 
+                league: null, 
+                league_place: null,
+                display_class: className
+            };
+        }
+
+        function showAppContent(userData) {
+            console.log("🚀 showAppContent ishga tushdi");
+
+            // Check if user is blocked
+            window.isUserBlocked = userData.is_blocked || false;
+
+            document.getElementById('registration-modal').style.display = 'none';
+
+            if (window.isUserBlocked) {
+                // Show blocked message instead of app content
+                const appContent = document.getElementById('app-content');
+                appContent.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; background: white; border-radius: 20px; margin: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                        <i class="fa-solid fa-ban" style="font-size: 4em; color: #e53e3e; margin-bottom: 20px;"></i>
+                        <h2 style="color: #e53e3e; margin-bottom: 15px;">Siz bloklangansiz!</h2>
+                        <p style="color: #666; margin-bottom: 20px;">Botdan foydalana olmaysiz.</p>
+                        <p style="color: #888; font-size: 0.9em;">Blokdan ochish uchun adminga yozing: @money_userrs</p>
+                        <p style="color: #aaa; font-size: 0.8em; margin-top: 15px;">Sizning ID: ${globalUserId}</p>
+                    </div>
+                `;
+                appContent.style.display = 'block';
+                return;
+            }
+
+            document.getElementById('app-content').style.display = 'block';
+
+            profileData.first_name = userData.first_name || '';
+            profileData.last_name = userData.last_name || '';
+            profileData.class_name = userData.class_name || '';
+            profileData.rating = userData.rating || 0;
+            profileData.status = userData.status || 'O\'quvchi';
+
+            // Sinfli liga ma'lumotlarini olish
+            const leagueInfo = getLeagueFromClass(userData.class_name);
+            profileData.league = leagueInfo.league;
+            profileData.place = userData.league_place || leagueInfo.league_place;
+            profileData.league_rank = userData.league_rank || null;
+
+            console.log('League info:', leagueInfo);
+            console.log('User league:', profileData.league);
+
+            if (userData.photo && userData.photo !== 'null' && userData.photo !== 'undefined' && userData.photo !== 'None' && userData.photo !== '') {
+                localStorage.setItem(`user_photo_${globalUserId}`, userData.photo);
+            }
+
+            if (String(globalUserId) === "7592032451") {
+                const adminBtn = document.getElementById('admin-btn');
+                if (adminBtn) {
+                    adminBtn.style.display = 'block';
+                }
+            } else {
+                const adminBtn = document.getElementById('admin-btn');
+                if (adminBtn) {
+                    adminBtn.style.display = 'none';
+                }
+            }
+
+            updateSeasonProgress();
+            window.allLeaguesTops = userData.all_leagues_tops || {};
+            updatePedestal(userData.top_players || []);
+
+            let fullName = 'O\'quvchi';
+            if (userData.first_name && userData.last_name) {
+                fullName = `${userData.first_name} ${userData.last_name}`;
+            }
+            document.getElementById('username').textContent = fullName;
+
+            if (userData.class_name) {
+                document.getElementById('class-display').textContent = userData.class_name;
+            }
+
+            const statusText = document.getElementById('status-text');
+            if (statusText) {
+                statusText.textContent = userData.status || 'O\'quvchi';
+            }
+
+            const leagueText = document.getElementById('league-text');
+            if (leagueText) {
+                leagueText.textContent = profileData.league || '---';
+                console.log('League text set to:', leagueText.textContent);
+            }
+
+            const leagueRankText = document.getElementById('league-rank-text');
+            if (leagueRankText) {
+                leagueRankText.textContent = profileData.league_rank ? `#${profileData.league_rank}` : '---';
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const photoUrl = urlParams.get('photo');
+            const avatarImg = document.getElementById('avatar');
+
+            console.log("Avatar Debug - URL Photo:", photoUrl);
+
+            if (photoUrl && photoUrl !== 'null' && photoUrl !== 'undefined' && photoUrl !== 'None' && photoUrl !== '') {
+                avatarImg.src = photoUrl;
+                avatarImg.onerror = function() {
+                    console.error("Avatarni URL dan yuklash muvaffaqiyatsiz:", photoUrl);
+                    this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+                    this.onerror = null;
+                };
+            } else if (userData.photo && userData.photo !== 'null' && userData.photo !== 'None' && userData.photo !== '') {
+                console.log("Avatar Debug - DB Photo:", userData.photo);
+                avatarImg.src = userData.photo;
+                avatarImg.onerror = function() {
+                    console.error("Avatarni DB dan yuklash muvaffaqiyatsiz:", userData.photo);
+                    this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+                    this.onerror = null;
+                };
+            } else {
+                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+            }
+
+            loadShopData().then(() => {
+                loadBundles();
+            });
+            loadUserBalance();
+            initSnow();
+
+            console.log("📸 initSchoolPhotos chaqirilmoqda...");
+            initSchoolPhotos();
+        }
+
+        async function registerUser() {
+        const firstName = document.getElementById('reg-first-name').value.trim();
+        const lastName = document.getElementById('reg-last-name').value.trim();
+        const classSelect = document.getElementById('reg-class');
+        const className = classSelect.value;
+
+        if (!firstName || !lastName || !className) {
+            tg.showAlert("Iltimos, barcha maydonlarni to'ldiring");
+            return;
+        }
+
+        // Проверка на латинские буквы для имени
+        const latinPattern = /^[A-Za-z]+$/;
+
+        if (!latinPattern.test(firstName)) {
+            tg.showAlert("Ism faqat lotin harflaridan iborat bo'lishi kerak");
+            return;
+        }
+
+        if (!latinPattern.test(lastName)) {
+            tg.showAlert("Familiya faqat lotin harflaridan iborat bo'lishi kerak");
+            return;
+        }
+
+        // Если нужна проверка на минимальную длину
+        if (firstName.length < 2) {
+            tg.showAlert("Ism kamida 2 harfdan iborat bo'lishi kerak");
+            return;
+        }
+
+        if (lastName.length < 2) {
+            tg.showAlert("Familiya kamida 2 harfdan iborat bo'lishi kerak");
+            return;
+        }
+
+            const leagueInfo = getLeagueFromClass(className);
+
+            // APIga yuborishda "7.01 sinf" formatida saqlaymiz
+            fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: globalUserId,
+                    first_name: firstName,
+                    last_name: lastName,
+                    class_name: className + ' sinf' // "7.01 sinf" formatida saqlaymiz
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('registration-modal').style.display = 'none';
+                    showAppContent({
+                        first_name: firstName,
+                        last_name: lastName,
+                        class_name: className + ' sinf', // "7.01 sinf" formatida ko'rsatamiz
+                        league: leagueInfo.league,
+                        league_place: leagueInfo.league_place,
+                        status: 'Yangi o\'quvchi',
+                        rating: 0
+                    });
+                    loadShopData();
+                    loadUserBalance();
+                } else {
+                    tg.showAlert('Ro\'yxatdan o\'tishda xato: ' + data.message);
+                }
+            })
+            .catch(e => {
+                tg.showAlert('Tarmoq xatosi: ' + e.message);
+            });
+        }
+
+        initApp();
+
+        function initTheme() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function toggleTheme() {
+            var currentTheme = document.documentElement.getAttribute('data-theme');
+            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            var icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.innerHTML = theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+            }
+        }
+
+        initTheme();
+
+        let snowEnabled = localStorage.getItem('snowEnabled') !== 'false';
+        let snowInterval = null;
+
+        function initSnow() {
+            updateSnowIcon();
+            if (snowEnabled) {
+                startSnow();
+            }
+        }
+
+        function startSnow() {
+            if (snowInterval) return;
+            snowInterval = setInterval(createSnowflake, 100);
+        }
+
+        function stopSnow() {
+            if (snowInterval) {
+                clearInterval(snowInterval);
+                snowInterval = null;
+            }
+            const container = document.getElementById('snow-container');
+            if (container) container.innerHTML = '';
+        }
+
+        function createSnowflake() {
+            const container = document.getElementById('snow-container');
+            if (!container) return;
+            const snowflake = document.createElement('div');
+            snowflake.className = 'snowflake';
+            snowflake.innerHTML = '●';
+            snowflake.style.left = Math.random() * 100 + 'vw';
+            snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
+            snowflake.style.opacity = Math.random();
+            snowflake.style.fontSize = Math.random() * 10 + 5 + 'px';
+
+            container.appendChild(snowflake);
+            setTimeout(() => snowflake.remove(), 5000);
+        }
+
+        function toggleSnow() {
+            snowEnabled = !snowEnabled;
+            localStorage.setItem('snowEnabled', snowEnabled);
+            updateSnowIcon();
+            if (snowEnabled) {
+                startSnow();
+            } else {
+                stopSnow();
+            }
+        }
+
+        function updateSnowIcon() {
+            const icon = document.getElementById('snow-toggle-icon');
+            if (icon) {
+                if (snowEnabled) {
+                    icon.className = 'snow-toggle active';
+                } else {
+                    icon.className = 'snow-toggle inactive';
+                }
+            }
+        }
+
+        initSnow();
+
+        function updateSeasonProgress() {
+            const seasonBlock = document.getElementById('season-block');
+            const daysLeftEl = document.getElementById('season-days-left');
+            const barFill = document.getElementById('season-bar-fill');
+            if (!seasonBlock || !daysLeftEl || !barFill) return;
+
+            const seasonDuration = 30;
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const diffTime = Math.abs(now - startOfMonth);
+            const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            const daysLeft = Math.max(0, seasonDuration - (daysPassed % seasonDuration));
+            const progress = ((seasonDuration - daysLeft) / seasonDuration) * 100;
+
+            daysLeftEl.innerText = `${daysLeft} kun`;
+            barFill.style.width = `${progress}%`;
+            seasonBlock.style.display = 'block';
+        }
+
+        function log(msg) {
+            console.log(msg);
+        }
+
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                selectedStars = parseInt(star.getAttribute('data-value'));
+                updateStars();
+            });
+        });
+
+        function updateStars() {
+            document.querySelectorAll('.star').forEach(s => {
+                s.classList.toggle('active', parseInt(s.getAttribute('data-value')) <= selectedStars);
+            });
+        }
+
+        function openReviewModal() {
+            selectedStars = 0;
+            updateStars();
+            document.getElementById('review-text').value = '';
+            document.getElementById('review-modal').style.display = 'block';
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').style.display = 'none';
+        }
+
+        function showSuccessModal(score) {
+            document.getElementById('success-title').innerText = 'Yakunlandi!';
+            document.getElementById('success-message-content').innerHTML = `Siz <b>${score}</b> ★ reyting oldingiz!`;
+            document.getElementById('success-modal').style.display = 'block';
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('success-modal').style.display = 'none';
+        }
+
+        function openTopsModal() {
+            const body = document.getElementById('tops-modal-body');
+            body.innerHTML = '';
+
+            if (!window.allLeaguesTops) {
+                body.innerHTML = '<div style="text-align:center; padding:20px;">Ma\'lumot yo\'q</div>';
+            } else {
+                for (const [leagueName, players] of Object.entries(window.allLeaguesTops)) {
+                    const section = document.createElement('div');
+                    section.className = 'league-top-section';
+                    section.innerHTML = `<div class="league-top-header">${leagueName}</div>`;
+
+                    if (players.length === 0) {
+                        section.innerHTML += '<div style="font-size:0.8em; color:var(--secondary-text); padding:5px 0;">O\'quvchilar yo\'q</div>';
+                    } else {
+                        players.forEach((p, idx) => {
+                            section.innerHTML += `
+                                <div class="top-player-row">
+                                    <div class="top-player-info">
+                                        <span class="top-player-rank">${idx + 1}.</span>
+                                        <span class="top-player-name">${p.name}</span>
+                                    </div>
+                                    <span class="top-player-score">${p.rating} ★</span>
+                                </div>
+                            `;
+                        });
+                    }
+                    body.appendChild(section);
+                }
+            }
+            document.getElementById('tops-modal').style.display = 'block';
+        }
+
+        function closeTopsModal() {
+            document.getElementById('tops-modal').style.display = 'none';
+        }
+
+        function openBuyModal(itemId, price, itemName) {
+            currentBuyItem = { id: itemId, price: price, name: itemName };
+            appliedPromo = null;
+
+            document.getElementById('buy-item-name').innerText = itemName;
+            document.getElementById('buy-item-price-container').innerHTML = `${price} <i class="fa-solid fa-coins"></i>`;
+
+            document.getElementById('promo-container').style.display = 'none';
+            document.querySelector('.promo-link').style.display = 'inline-block';
+            document.getElementById('promo-code').value = '';
+            document.getElementById('promo-code').className = 'promo-input';
+            document.getElementById('promo-error').style.display = 'none';
+
+            document.getElementById('buy-modal').style.display = 'block';
+
+            document.getElementById('confirm-buy-btn').onclick = () => executePurchase();
+        }
+
+        function closeBuyModal() {
+            document.getElementById('buy-modal').style.display = 'none';
+        }
+
+        function showPromoInput() {
+            document.querySelector('.promo-link').style.display = 'none';
+            document.getElementById('promo-container').style.display = 'block';
+            document.getElementById('promo-code').focus();
+        }
+
+        async function validatePromo() {
+            const code = document.getElementById('promo-code').value.trim();
+            const input = document.getElementById('promo-code');
+            const error = document.getElementById('promo-error');
+            const priceContainer = document.getElementById('buy-item-price-container');
+
+            if (!code) {
+                input.className = 'promo-input';
+                error.style.display = 'none';
+                priceContainer.innerHTML = `${currentBuyItem.price} <i class="fa-solid fa-coins"></i>`;
+                appliedPromo = null;
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/promo/check?code=${encodeURIComponent(code)}&item_id=${currentBuyItem.id}&user_id=${globalUserId}`);
+                const data = await resp.json();
+
+                if (data.valid) {
+                    input.className = 'promo-input valid';
+                    error.style.display = 'none';
+                    appliedPromo = data;
+                    const newPrice = Math.floor(currentBuyItem.price * (1 - data.discount / 100));
+                    priceContainer.innerHTML = `
+                        <span class="old-price">${currentBuyItem.price}</span>
+                        <span class="new-price">${newPrice}</span> <i class="fa-solid fa-coins"></i>
+                    `;
+                } else {
+                    input.className = 'promo-input invalid';
+                    error.style.display = 'flex';
+                    error.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${data.message || 'Promokod topilmadi!'}`;
+                    priceContainer.innerHTML = `${currentBuyItem.price} <i class="fa-solid fa-coins"></i>`;
+                    appliedPromo = null;
+                }
+            } catch (e) {
+                console.error("Promokodni tekshirish xatosi:", e);
+            }
+        }
+
+        async function executePurchase() {
+            if (isProcessing) return;
+
+            const price = appliedPromo ? Math.floor(currentBuyItem.price * (1 - appliedPromo.discount / 100)) : currentBuyItem.price;
+
+            isProcessing = true;
+            try {
+                const resp = await fetch('/api/buy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: globalUserId, 
+                        item_id: currentBuyItem.id,
+                        promo_code: appliedPromo ? appliedPromo.code : null
+                    })
+                });
+                const res = await resp.json();
+
+                if (resp.ok) {
+                    closeBuyModal();
+                    document.getElementById('success-message-content').innerHTML = `
+                        Siz <b>${currentBuyItem.name}</b> ni <b>${price}</b> reytingga muvaffaqiyatli sotib oldingiz.<br><br>
+                        Buyurtma muvaffaqiyatli yaratildi. Iltimos, <b>HolyWorld Lite</b> serverining birjasida (/exchange) sotib olgan miqdoringizdagi ko'ini <b>1 koin uchun 57 tanga kursida</b> qo'ying — bu juda muhim! (Agar siz koin sotib olgan bo'lsangiz.)<br><br> 
+                        Navbatingizni kuting: buyurtmangiz tez orada ko'rib chiqiladi va bajariladi. <b>Sabr-toqatingiz uchun rahmat!</b>
+                    `;
+                    document.getElementById('success-modal').style.display = 'block';
+                    loadData();
+                } else {
+                    tg.showAlert(res.message);
+                }
+            } catch (e) {
+                tg.showAlert('Xato: ' + e.message);
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        async function submitReview() {
+            if (selectedStars === 0) {
+                tg.showAlert('Iltimos, yulduzlar sonini tanlang');
+                return;
+            }
+            const text = document.getElementById('review-text').value;
+            try {
+                const resp = await fetch('/api/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: parseInt(globalUserId), stars: selectedStars, text: text })
+                });
+                const res = await resp.json();
+                tg.showAlert(res.message);
+                hasUserReviewed = true;
+                closeReviewModal();
+            } catch (e) {
+                tg.showAlert('Fikr yuborishda xato: ' + e.message);
+            }
+        }
+
+        function switchSection(section) {
+            // Check if user is blocked
+            if (window.isUserBlocked) {
+                alert("Siz bloklangansiz! Botdan foydalana olmaysiz.\n\nBlokdan ochish uchun adminga yozing: @money_userrs");
+                return;
+            }
+
+            currentSection = section;
+            document.querySelectorAll('#main-tabs .nav-tab').forEach((t, i) => {
+                t.classList.toggle('active', (section === 'shop' && i === 0) || (section === 'purchases' && i === 1));
+            });
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+            if (section === 'shop') {
+                document.getElementById('shop-section').classList.add('active');
+            } else {
+                document.getElementById('purchases-section').classList.add('active');
+                loadBundles();
+            }
+        }
+
+        function switchCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('#category-tabs .p-tab').forEach((t) => {
+                const onclickAttr = t.getAttribute('onclick');
+                if (onclickAttr) {
+                    const match = onclickAttr.match(/'([^']+)'/);
+                    if (match) {
+                        const catValue = match[1];
+                        t.classList.toggle('active', catValue === cat);
+                    }
+                }
+            });
+
+            const customTitleCard = document.getElementById('custom-title-card');
+            if (customTitleCard) {
+                customTitleCard.style.display = (cat === 'privileges') ? 'flex' : 'none';
+            }
+
+            renderItems();
+        }
+
+        async function promptSetNick() {
+            const newNick = prompt("O'yin laqabingizni kiriting (lotincha, raqamlar, _):");
+            if (newNick && newNick.trim()) {
+                const nick = newNick.trim();
+                const regex = /^[a-zA-Z0-9_]+$/;
+                if (!regex.test(nick)) {
+                    tg.showAlert("Laqab faqat lotin harflari, raqamlar va pastki chiziqdan iborat bo'lishi mumkin!");
+                    return;
+                }
+                try {
+                    const resp = await fetch('/api/user/nickname', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({user_id: globalUserId, nickname: nick})
+                    });
+                    const res = await resp.json();
+                    if (resp.ok) {
+                        document.getElementById('server-nick').innerText = nick;
+                        tg.showAlert("Laqab muvaffaqiyatli saqlandi!");
+                    } else {
+                        tg.showAlert(res.message || "Saqlash xatosi");
+                    }
+                } catch (e) {
+                    tg.showAlert("Saqlash xatosi: " + e.message);
+                }
+            }
+        }
+
+        function renderItems() {
+            const list = document.getElementById('items-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const filtered = allItems.filter(item => {
+                if (item.item_id === 999) return false;
+                if (window.completedTaskIds && window.completedTaskIds.includes(item.item_id)) {
+                    return false;
+                }
+                if (currentCategory === 'all') return true;
+                return item.category === currentCategory;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color: var(--secondary-text); width: 100%;">Hozircha vazifalar yo\'q</div>';
+                const controls = document.querySelector('.slider-controls');
+                if (controls) controls.style.display = 'none';
+                return;
+            }
+
+            const controls = document.querySelector('.slider-controls');
+            if (controls) controls.style.display = filtered.length > 1 ? 'flex' : 'none';
+
+            filtered.forEach(item => {
+                const slide = document.createElement('div');
+                slide.className = 'slide';
+                slide.innerHTML = `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-price">${item.price} <i class="fa-solid fa-coins"></i></span>
+                        </div>
+                        <button class="buy-btn" onclick="openTasksModalDirect(${JSON.stringify(item).replace(/"/g, '&quot;')})">Vazifani olish</button>
+                    </div>
+                `;
+                list.appendChild(slide);
+            });
+        }
+
+        function openTasksModalDirect(task) {
+            const modal = document.getElementById('tasks-modal');
+            const optionsContainer = document.getElementById('task-modal-options');
+
+            window.activeTask = task;
+            window.selectedOptionIdx = undefined;
+
+            document.getElementById('task-progress-text').innerText = `1 / 1`;
+            document.getElementById('task-modal-question').innerHTML = `${task.name} <span style="color: #4caf50; font-size: 0.8em;">(+${task.price} reyting)</span>`;
+
+            optionsContainer.innerHTML = '';
+            const options = task.options ? task.options.split('|') : [];
+            options.forEach((opt, idx) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = 'task-option';
+                optDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    const allOpts = optionsContainer.querySelectorAll('.task-option');
+                    allOpts.forEach(o => o.classList.remove('selected'));
+                    optDiv.classList.add('selected');
+                    window.selectedOptionIdx = idx;
+                };
+                optDiv.innerHTML = `
+                    <div class="task-option-circle"></div>
+                    <span>${opt}</span>
+                `;
+                optionsContainer.appendChild(optDiv);
+            });
+
+            const prevBtn = document.getElementById('task-prev-btn');
+            if (prevBtn) prevBtn.style.display = 'none';
+
+            const nextBtn = document.getElementById('task-next-btn');
+            nextBtn.innerHTML = 'Yakunlash <i class="fa-solid fa-check"></i>';
+            nextBtn.onclick = () => {
+                tg.showConfirm("Yakunlashni istaysizmi?", (confirm) => {
+                    if (confirm) finishActiveTask();
+                });
+            };
+
+            modal.style.display = 'block';
+        }
+
+        async function finishActiveTask() {
+            if (window.selectedOptionIdx === undefined) {
+                tg.showAlert("Iltimos, javob variantini tanlang");
+                return;
+            }
+
+            const task = window.activeTask;
+            const isCorrect = window.selectedOptionIdx === parseInt(task.correct_option);
+
+            if (isCorrect) {
+                try {
+                    const response = await fetch('/api/tasks/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: globalUserId,
+                            score: task.price,
+                            task_id: task.item_id
+                        })
+                    });
+
+                    if (response.ok) {
+                        closeTasksModal();
+
+                        document.getElementById('success-title').innerText = 'To\'g\'ri!';
+                        document.getElementById('success-message-content').innerHTML = `Siz <b>${task.price}</b> ball oldingiz.`;
+                        document.getElementById('success-modal').style.display = 'block';
+
+                        if (!window.completedTaskIds) window.completedTaskIds = [];
+                        window.completedTaskIds.push(task.item_id);
+
+                        loadUserBalance();
+                        renderItems();
+                        renderPurchases();
+                    }
+                } catch (e) {
+                    console.error('Vazifani yakunlash xatosi:', e);
+                }
+            } else {
+                tg.showAlert('Noto\'g\'ri! Yana bir bor urinib ko\'ring.');
+            }
+        }
+
+        function filterPurchases(status) {
+            currentPurchaseFilter = status;
+            document.querySelectorAll('#purchases-section .p-tab').forEach(t => {
+                t.classList.remove('active');
+                const onclickAttr = t.getAttribute('onclick');
+                if (onclickAttr && onclickAttr.includes(`'${status}'`)) {
+                    t.classList.add('active');
+                }
+            });
+
+            const activeTasksBlock = document.getElementById('active-tasks-block');
+            if (activeTasksBlock) {
+                // Проверяем наличие завершённых сборок (task_id >= 1000)
+                const hasCompletedBundles = window.completedTaskIds && window.completedTaskIds.some(id => id >= 1000);
+
+                if (status === 'pending') {
+                    if (hasCompletedBundles) {
+                        activeTasksBlock.style.display = 'none';
+                    } else {
+                        activeTasksBlock.style.display = 'block';
+                        document.getElementById('assembly-title').innerText = 'Vazifalar to\'plami';
+                        document.getElementById('assembly-subtitle').innerText = 'To\'plamlarni boshlash uchun pastga scroll qiling';
+                        document.getElementById('assembly-btn').innerHTML = '<i class="fa-solid fa-play"></i> To\'plamlarni ko\'rish';
+                    }
+                } else {
+                    if (hasCompletedBundles) {
+                        activeTasksBlock.style.display = 'block';
+                        document.getElementById('assembly-title').innerText = 'Vazifalar to\'plami';
+                        document.getElementById('assembly-subtitle').innerText = 'To\'plamlar bajarildi';
+                        document.getElementById('assembly-btn').innerHTML = '<i class="fa-solid fa-eye"></i> Ko\'rish';
+                    } else {
+                        activeTasksBlock.style.display = 'none';
+                    }
+                }
+            }
+
+            renderPurchases();
+        }
+
+        function handleAssemblyClick() {
+            // Проверяем, есть ли завершённые сборки
+            if (window.completedTaskIds && window.completedTaskIds.some(id => id >= 1000)) {
+                fetch(`/api/user/${globalUserId}/tasks`)
+                    .then(r => r.json())
+                    .then(data => {
+                        // Находим первую завершённую сборку
+                        const completedBundle = data.completed.find(t => t.task_id >= 1000);
+                        if (completedBundle) {
+                            showStatsModal(completedBundle);
+                        } else {
+                            // Если сборок нет, переключаем на вкладку с активными сборками
+                            switchSection('purchases');
+                            filterPurchases('pending');
+                        }
+                    });
+            } else {
+                // Переключаем на вкладку с активными сборками
+                switchSection('purchases');
+                filterPurchases('pending');
+            }
+        }
+
+        // Bundle management variables
+        let activeBundles = [];
+        let completedBundles = [];
+        let currentBundleTab = 'active';
+
+        // Add beforeunload handler for assembly mode
+        window.addEventListener('beforeunload', (event) => {
+            if (currentBundle && document.getElementById('tasks-modal').style.display === 'block') {
+                // Trigger auto-completion via beacon or similar sync request if possible, 
+                // but since we need user confirmation, we use the standard approach.
+                const message = "Sizda tugallanmagan vazifalar to'plami bor. Sahifani yangilasangiz, to'plam avtomatik ravishda yakunlanadi. Davom etishni xohlaysizmi?";
+                event.returnValue = message;
+
+                // We can't wait for response here, so we set a flag in localStorage 
+                // to finish it on next load if they actually leave.
+                // However, the requirement says "if answer is yes, page reloads and bundle completes".
+                // In a browser, we can't detect "Yes" on beforeunload directly.
+                // We will handle the completion in restoreBundleState if it was interrupted.
+                localStorage.setItem('interruptedBundle_' + globalUserId, JSON.stringify({
+                    bundle_id: currentBundle.item_id,
+                    score: bundleScore,
+                    correct: bundleCorrect,
+                    answers: bundleAnswers,
+                    at: new Date().toISOString()
+                }));
+                return message;
+            }
+        });
+
+        // Switch between active and completed bundles tabs
+        function switchBundleTab(tab) {
+            currentBundleTab = tab;
+
+            // Update tab styling
+            document.querySelectorAll('#purchases-section .nav-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            event.target.closest('.nav-tab').classList.add('active');
+
+            // Show/hide containers
+            document.getElementById('active-bundles-container').style.display = tab === 'active' ? 'block' : 'none';
+            document.getElementById('completed-bundles-container').style.display = tab === 'completed' ? 'block' : 'none';
+
+            // Render appropriate content
+            if (tab === 'active') {
+                renderActiveBundles();
+            } else {
+                renderCompletedBundles();
+            }
+        }
+
+        // Render active bundles as cards
+        function renderActiveBundles() {
+            const container = document.getElementById('active-bundles-container');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (!activeBundles || activeBundles.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <p>Aktiv to'plamlar yo'q</p>
+                    </div>
+                `;
+                return;
+            }
+
+            activeBundles.forEach(bundle => {
+                const card = document.createElement('div');
+                card.className = 'bundle-card';
+                const timeInfo = bundle.time_limit > 0 
+                    ? `<div style="margin-top: 8px; color: #0088cc; font-size: 0.9em;"><i class="fa-solid fa-clock"></i> ${bundle.time_limit} daqiqa</div>`
+                    : '';
+                card.innerHTML = `
+                    <div class="bundle-header">
+                        <div class="bundle-icon">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div class="bundle-info">
+                            <div class="bundle-title">Bugungi vazifalar to'plami</div>
+                            <div class="bundle-subtitle">${bundle.total_questions} ta yangi vazifa sizning yechimingizni kutmoqda${timeInfo}</div>
+                        </div>
+                    </div>
+                    <button class="bundle-btn" onclick="startBundle('${bundle.item_id}')">
+                        <i class="fa-solid fa-play"></i> Vazifalarni boshlash
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Render completed bundles as cards
+        function renderCompletedBundles() {
+            const container = document.getElementById('completed-bundles-container');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (!completedBundles || completedBundles.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-check-double"></i>
+                        <p>Bajarilgan to'plamlar yo'q</p>
+                    </div>
+                `;
+                return;
+            }
+
+            completedBundles.forEach(bundle => {
+                const card = document.createElement('div');
+                card.className = 'bundle-card';
+                card.innerHTML = `
+                    <div class="bundle-header">
+                        <div class="bundle-icon" style="background: linear-gradient(135deg, #4caf50, #45a049);">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div class="bundle-info">
+                            <div class="bundle-title">${bundle.name}</div>
+                            <div class="bundle-subtitle">${bundle.correct_count} ta to'g'ri / ${bundle.incorrect_count} ta noto'g'ri</div>
+                        </div>
+                    </div>
+                    <button class="bundle-btn completed" onclick="viewBundleResults('${bundle.task_id}')">
+                        <i class="fa-solid fa-eye"></i> Javoblarni ko'rish
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Start a bundle (open tasks modal)
+        function startBundle(bundleId) {
+            const bundle = activeBundles.find(b => b.item_id == bundleId);
+            if (bundle) {
+                openBundle(bundle);
+            }
+        }
+
+        // View bundle results (show stats modal)
+        function viewBundleResults(taskId) {
+            const bundle = completedBundles.find(b => b.task_id == taskId);
+            if (bundle) {
+                showStatsModal(bundle);
+            }
+        }
+
+        // Show stats modal with bundle results
+        function showStatsModal(bundle) {
+            const correct = bundle.correct_count || 0;
+            const incorrect = bundle.incorrect_count || 0;
+            const total = correct + incorrect;
+            const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+            const rating = bundle.earned_rating || 0;
+
+            document.getElementById('stats-bundle-name').textContent = bundle.name || "To'plam natijalari";
+            document.getElementById('stats-total').textContent = total;
+            document.getElementById('stats-correct').textContent = correct;
+            document.getElementById('stats-incorrect').textContent = incorrect;
+            document.getElementById('stats-rating').textContent = '+' + rating;
+            document.getElementById('stats-accuracy-bar').style.width = accuracy + '%';
+            document.getElementById('stats-accuracy-text').textContent = accuracy + '%';
+
+            document.getElementById('stats-modal').style.display = 'block';
+        }
+
+        // Close stats modal
+        function closeStatsModal() {
+            document.getElementById('stats-modal').style.display = 'none';
+        }
+
+        // Load bundles data from API
+        async function loadBundles() {
+            if (!globalUserId) return;
+            try {
+                const response = await fetch(`/api/user/${globalUserId}/tasks`);
+                const data = await response.json();
+
+                activeBundles = data.active || [];
+                completedBundles = data.completed || [];
+
+                // Check if there's a pending bundle to restore
+                restoreBundleState();
+
+                // Render based on current tab
+                if (currentBundleTab === 'active') {
+                    renderActiveBundles();
+                } else {
+                    renderCompletedBundles();
+                }
+            } catch (e) {
+                console.error("To'plamlarni yuklash xatosi:", e);
+            }
+        }
+
+        // Save bundle state to localStorage
+        function saveBundleState() {
+            if (currentBundle && currentQuestionIdx !== undefined) {
+                const state = {
+                    bundle: currentBundle,
+                    questions: currentBundleQuestions,
+                    questionIdx: currentQuestionIdx,
+                    score: bundleScore,
+                    correct: bundleCorrect,
+                    answers: bundleAnswers,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem('pendingBundle_' + globalUserId, JSON.stringify(state));
+            }
+        }
+
+        // Restore bundle state from localStorage
+        async function restoreBundleState() {
+            // Check for interrupted bundle that needs auto-completion
+            const interruptedData = localStorage.getItem('interruptedBundle_' + globalUserId);
+            if (interruptedData) {
+                try {
+                    const data = JSON.parse(interruptedData);
+                    localStorage.removeItem('interruptedBundle_' + globalUserId);
+                    localStorage.removeItem('pendingBundle_' + globalUserId);
+
+                    // Auto-finish the interrupted bundle
+                    console.log("Finishing interrupted bundle:", data);
+                    await fetch('/api/tasks/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: globalUserId,
+                            score: data.score,
+                            task_id: data.bundle_id,
+                            answers: data.answers,
+                            correct_count: data.correct,
+                            incorrect_count: Object.keys(data.answers || {}).length - data.correct
+                        })
+                    });
+
+                    tg.showAlert("Oldingi tugallanmagan to'plam avtomatik ravishda yakunlandi.");
+                    loadData();
+                    return;
+                } catch (e) {
+                    console.error("Error auto-finishing interrupted bundle:", e);
+                }
+            }
+
+            const savedState = localStorage.getItem('pendingBundle_' + globalUserId);
+            if (!savedState) return;
+
+            try {
+                const state = JSON.parse(savedState);
+
+                // Check if this bundle is still active (not completed)
+                const bundleStillActive = activeBundles.find(b => b.item_id === state.bundle?.item_id);
+                if (!bundleStillActive) {
+                    // Bundle is completed or no longer available, clear state
+                    localStorage.removeItem('pendingBundle_' + globalUserId);
+                    return;
+                }
+
+                // Calculate elapsed time
+                const savedAt = new Date(state.savedAt);
+                const now = new Date();
+                const elapsedSeconds = Math.floor((now - savedAt) / 1000);
+
+                // Get time limit from server
+                const response = await fetch(`/api/user/${globalUserId}/tasks`);
+                const data = await response.json();
+                const bundle = data.active?.find(b => b.item_id === state.bundle?.item_id);
+
+                if (bundle && bundle.time_limit > 0) {
+                    const totalSeconds = bundle.time_limit * 60;
+                    const remainingSeconds = totalSeconds - elapsedSeconds;
+
+                    if (remainingSeconds <= 0) {
+                        // Time expired, clear state
+                        localStorage.removeItem('pendingBundle_' + globalUserId);
+                        return;
+                    }
+
+                    // Restore state
+                    currentBundle = state.bundle;
+                    currentBundleQuestions = state.questions;
+                    currentQuestionIdx = state.questionIdx;
+                    bundleScore = state.score;
+                    bundleCorrect = state.correct;
+                    bundleAnswers = state.answers;
+
+                    // Start timer with remaining time
+                    const timerContainer = document.getElementById('bundle-timer-container');
+                    timerContainer.style.display = 'flex';
+                    bundleTimeRemaining = remainingSeconds;
+                    updateBundleTimerDisplay();
+
+                    bundleTimerInterval = setInterval(async () => {
+                        bundleTimeRemaining--;
+                        updateBundleTimerDisplay();
+
+                        // Save state periodically
+                        saveBundleState();
+
+                        if (bundleTimeRemaining <= 0) {
+                            stopBundleTimer();
+                            tg.showAlert("Vaqt tugadi! To'plam avtomatik ravishda yakunlandi.");
+                            await finishBundle(true);
+                        }
+                    }, 1000);
+
+                    // Show the modal
+                    showBundleQuestion();
+                    document.getElementById('tasks-modal').style.display = 'block';
+
+                    // Save state on every answer change
+                    document.querySelectorAll('.task-option').forEach((opt, idx) => {
+                        opt.onclick = () => {
+                            selectBundleOption(idx);
+                            saveBundleState();
+                        };
+                    });
+                }
+            } catch (e) {
+                console.error('Error restoring bundle state:', e);
+            }
+        }
+
+        // Clear bundle state when completed
+        function clearBundleState() {
+            localStorage.removeItem('pendingBundle_' + globalUserId);
+        }
+
+        async function executeTitlePurchase() {
+            const text = document.getElementById('custom-title-input').value.trim();
+            const color = selectedColor;
+
+            if (!text) {
+                tg.showAlert("Unvon matnini kiriting!");
+                return;
+            }
+
+            if (isProcessing) return;
+            isProcessing = true;
+
+            try {
+                const resp = await fetch('/api/titles/buy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: globalUserId, text: text, color: color })
+                });
+                const res = await resp.json();
+
+                if (resp.ok) {
+                    tg.showAlert("Unvon muvaffaqiyatli sotib olindi va faollashtirildi!");
+                    closeTitlesModal();
+                    loadData();
+                } else {
+                    tg.showAlert(res.message);
+                }
+            } catch (e) {
+                tg.showAlert("Xato: " + e.message);
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        let colorPicker;
+        function initColorPicker() {
+            if (colorPicker) return;
+            colorPicker = new iro.ColorPicker("#iro-color-picker", {
+                width: 180,
+                color: "#ff0000",
+                layout: [
+                    { component: iro.ui.Box },
+                    { component: iro.ui.Slider, options: { sliderType: 'hue' } },
+                ]
+            });
+            colorPicker.on('color:change', function(color) {
+                selectedColor = color.hexString;
+                updateTitlePreview();
+            });
+        }
+
+        function showTitlePurchase() {
+            document.getElementById('titles-list-view').style.display = 'none';
+            document.getElementById('title-purchase-view').style.display = 'block';
+            document.getElementById('titles-modal-title').innerText = 'Unvon sotib olish';
+            initColorPicker();
+            updateTitlePreview();
+        }
+
+        function showTitlesList() {
+            document.getElementById('titles-list-view').style.display = 'block';
+            document.getElementById('title-purchase-view').style.display = 'none';
+            document.getElementById('titles-modal-title').innerText = 'Sizning unvonlaringiz';
+            loadUserTitles();
+        }
+
+        function updateTitlePreview() {
+            const text = document.getElementById('custom-title-input').value || '[Sizning unvoningiz]';
+
+            const previewTitle = document.getElementById('preview-title');
+            previewTitle.innerText = text;
+            previewTitle.style.color = selectedColor;
+
+            const nick = document.getElementById('server-nick').innerText;
+            document.getElementById('preview-nickname').innerText = nick === 'установить' ? 'Laqab' : nick;
+        }
+
+        function openTitlesModal() {
+            document.getElementById('titles-modal').style.display = 'block';
+            showTitlesList();
+        }
+
+        function closeTitlesModal() {
+            document.getElementById('titles-modal').style.display = 'none';
+        }
+
+        async function loadData() {
+            log("Yuklash boshlanmoqda...");
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('app-content').style.display = 'none';
+
+            let userId = null;
+            let userName = null;
+            let userPhoto = null;
+
+            const initDataUser = tg.initDataUnsafe?.user;
+            if (initDataUser && initDataUser.id) {
+                userId = initDataUser.id;
+                userName = initDataUser.first_name || initDataUser.username;
+                userPhoto = initDataUser.photo_url;
+                log("initDataUnsafe dan foydalanuvchi: " + userId);
+            }
+
+            if (!userId) {
+                // ONLY use Telegram authentication - never fall back to URL parameters for security
+                // This prevents users from seeing other users' accounts via shared links
+                log("Foydalanuvchi ID si topilmadi - Telegram autentifikatsiyasi kutmoqda");
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                document.getElementById('username').innerText = 'Foydalanuvchi (Mehmon)';
+                return;
+            }
+
+            globalUserId = userId;
+            if (tg && tg.MainButton) tg.MainButton.hide();
+
+            const firstName = userName || 'Foydalanuvchi';
+            document.getElementById('username').innerText = firstName;
+
+            const avatarImg = document.getElementById('avatar');
+            const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}&background=random`;
+
+            if (userPhoto && userPhoto !== 'null' && userPhoto !== 'undefined') {
+                avatarImg.src = userPhoto;
+                avatarImg.onerror = function() {
+                    log("Rasm yuklash muvaffaqiyatsiz, standartga o'tilmoqda");
+                    this.src = defaultAvatar;
+                    this.onerror = null;
+                };
+            } else {
+                avatarImg.src = defaultAvatar;
+            }
+
+            const ratingEl = document.getElementById('user-rating');
+            if (ratingEl) ratingEl.innerText = '...';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+
+            var retries = 5;
+
+            function tryFetch() {
+                if (retries <= 0) {
+                    document.getElementById('error-msg').innerText = 'Profil ma\'lumotlarini olish muvaffaqiyatsiz. Sahifani yangilab ko\'ring.';
+                    document.getElementById('error-msg').style.display = 'block';
+                    return;
+                }
+
+                const queryParams = new URLSearchParams({
+                    username: userName || '',
+                    name: userName || ''
+                }).toString();
+
+                fetch("/api/user/" + userId + "?" + queryParams)
+                    .then(function(userResp) {
+                        if (userResp.ok) {
+                            return userResp.json();
+                        }
+                        return userResp.text().then(text => { throw new Error(text || userResp.statusText) });
+                    })
+                    .then(function(data) {
+                        console.log("Foydalanuvchi ma'lumotlari yuklandi:", data);
+                        profileData.first_name = data.first_name || '';
+                        profileData.last_name = data.last_name || '';
+                        profileData.class_name = data.class_name || '';
+                        profileData.rating = data.rating || 0;
+                        profileData.status = data.status || 'O\'quvchi';
+
+                        // Sinfli liga ma'lumotlarini olish
+                        const leagueInfo = getLeagueFromClass(data.class_name);
+                        profileData.league = leagueInfo.league;
+                        profileData.league_place = data.league_place || leagueInfo.league_place;
+                        profileData.league_rank = data.league_rank || null;
+
+                        console.log('League from loadData:', profileData.league);
+
+                        const rEl = document.getElementById('user-rating');
+                        if (rEl) rEl.innerText = data.rating || 0;
+                        document.getElementById('status-text').innerText = data.status || 'O\'quvchi';
+
+                        // Отображаем лигу
+                        const leagueText = document.getElementById('league-text');
+                        if (leagueText) {
+                            leagueText.textContent = profileData.league || '---';
+                        }
+
+                        // Отображаем место в лиге
+                        const leagueRankText = document.getElementById('league-rank-text');
+                        if (leagueRankText) {
+                            leagueRankText.textContent = profileData.league_rank ? `#${profileData.league_rank}` : '---';
+                        }
+
+                        const classDisplay = document.getElementById('class-display');
+                        if (classDisplay && data.class_name) {
+                            classDisplay.innerText = data.class_name;
+                        }
+
+                        const OWNER_ID = "7612340818";
+
+                        let userDisplayName = data.display_name || firstName;
+
+                        let iconHtml = '';
+                        if (String(userId) === OWNER_ID) {
+                            iconHtml = '<i class="fa-brands fa-sketch fa-beat" style="color: #74C0FC;"></i> ';
+                        } else if (data.is_admin) {
+                            iconHtml = '<i class="fa-solid fa-user-tie fa-beat"></i> ';
+                        }
+
+                        if (String(userId) === "7592032451") {
+                            const adminBtn = document.getElementById('admin-btn');
+                            if (adminBtn) {
+                                adminBtn.style.display = 'block';
+                            }
+                        } else {
+                            const adminBtn = document.getElementById('admin-btn');
+                            if (adminBtn) adminBtn.style.display = 'none';
+                        }
+
+
+                        if (data.server_nick) {
+                            const serverNickEl = document.getElementById('server-nick');
+                            if (serverNickEl) serverNickEl.innerText = data.server_nick;
+                        }
+
+                        const pedestal = document.getElementById('league-pedestal');
+                        if (pedestal) {
+                            pedestal.style.display = 'block';
+                            const leagueNameEl = document.getElementById('pedestal-league-name');
+                            if (leagueNameEl) {
+                                leagueNameEl.innerText = data.league || 'Umumiy top';
+                                console.log("Pedestal sarlavhasi yangilandi:", leagueNameEl.innerText);
+                            }
+
+                            for (let i = 1; i <= 3; i++) {
+                                const n = document.getElementById(`top-${i}-name`);
+                                const s = document.getElementById(`top-${i}-score`);
+                                const a = document.getElementById(`top-${i}-avatar`);
+                                if (n) n.innerText = 'Bo\'sh';
+                                if (s) s.innerText = '0 ★';
+                                if (a) a.src = `https://ui-avatars.com/api/?name=${i}&background=random`;
+                            }
+
+                            if (data.top_players && data.top_players.length > 0) {
+                                console.log("Pedestal o'quvchilar bilan to'ldirilmoqda:", data.top_players);
+                                data.top_players.forEach(player => {
+                                    if (player.rank <= 3) {
+                                        const nameEl = document.getElementById(`top-${player.rank}-name`);
+                                        const scoreEl = document.getElementById(`top-${player.rank}-score`);
+                                        const avatarEl = document.getElementById(`top-${player.rank}-avatar`);
+
+                                        if (nameEl) nameEl.innerText = player.name;
+                                        if (scoreEl) scoreEl.innerText = (player.rating || 0) + ' ★';
+
+                                        if (player.photo && player.photo !== 'null' && player.photo !== 'undefined' && player.photo !== 'None' && player.photo !== '') {
+                                            if (player.photo.startsWith('file_') || player.photo.startsWith('photos/')) {
+                                                const botToken = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M";
+                                                avatarEl.src = `https://api.telegram.org/file/bot${botToken}/${player.photo}`;
+                                            } else {
+                                                avatarEl.src = player.photo;
+                                            }
+
+                                            avatarEl.onerror = function() {
+                                                this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random&color=fff&size=128`;
+                                                this.onerror = null;
+                                            };
+                                        } else {
+                                            avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random&color=fff&size=128`;
+                                        }
+                                    }
+                                });
+                            } else {
+                                console.warn("API dan top o'quvchilar olinmadi");
+                            }
+                        }
+
+                        return fetch('/api/items');
+                    })
+                    .then(function(itemsResp) {
+                        if (itemsResp && itemsResp.ok) {
+                            return itemsResp.json();
+                        }
+                        return null;
+                    })
+                    .then(function(itemsData) {
+                        if (itemsData) {
+                            allItems = itemsData;
+                            renderItems();
+                        }
+                    })
+                    .catch(function(e) {
+                        console.log("Yuklash xatosi: " + e.message);
+                        retries--;
+                        setTimeout(tryFetch, 1500);
+                    });
+            }
+
+            tryFetch();
+        }
+
+        async function buyItem(itemId, price, itemName) {
+            if (isProcessing) return;
+
+            tg.showConfirm(`${itemName} ni ${price} reytingga sotib olishni istaysizmi?`, async (confirmed) => {
+                if (!confirmed) return;
+
+                isProcessing = true;
+                setTimeout(() => { isProcessing = false; }, 2000);
+
+                tg.MainButton.setText('Qayta ishlanmoqda...');
+                tg.MainButton.show();
+
+                try {
+                    const resp = await fetch('/api/buy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: parseInt(globalUserId), item_id: itemId })
+                    });
+                    const res = await resp.json();
+
+                    if (resp.ok) {
+                        const successHtml = "<b>Vazifa muvaffaqiyatli olindi!</b>";
+                        document.getElementById('success-message-content').innerHTML = successHtml;
+                        document.getElementById('success-modal').style.display = 'block';
+
+                        allItems = allItems.filter(i => i.item_id !== itemId);
+                        renderItems();
+                    } else {
+                        tg.showAlert(res.message);
+                    }
+
+                    setTimeout(() => {
+                        if (!hasUserReviewed) {
+                            openReviewModal();
+                        }
+                    }, 1000);
+
+                    loadData();
+                } catch (e) {
+                    tg.showAlert('Xaridni qayta ishlashda xato: ' + e.message);
+                } finally {
+                    tg.MainButton.hide();
+                }
+            });
+        }
+
+        async function loadUserTitles() {
+            if (!globalUserId) return;
+            try {
+                const resp = await fetch(`/api/user/${globalUserId}/titles`);
+                const titles = await resp.json();
+                const list = document.getElementById('owned-titles');
+                list.innerHTML = '';
+
+                if (titles.length === 0) {
+                    list.innerHTML = '<div style="color:var(--secondary-text);">Sizda hozircha unvonlar yo\'q</div>';
+                    return;
+                }
+
+                titles.forEach(t => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-box';
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+
+                    const btnClass = t.is_active ? 'title_btn_active' : 'title_btn_custom';
+                    const btnText = t.is_active ? 'Faol' : 'Yoqish';
+
+                    div.innerHTML = `
+                        <span style="color: ${t.color}; font-weight: bold;">[${t.text}]</span>
+                        <button class="${btnClass}" onclick="activateTitle(${t.title_id})">${btnText}</button>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                log("Unvonlarni yuklash xatosi: " + e.message);
+            }
+        }
+
+        async function activateTitle(titleId) {
+            try {
+                const resp = await fetch('/api/titles/activate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: globalUserId, title_id: titleId })
+                });
+                if (resp.ok) {
+                    loadUserTitles();
+                    loadData();
+                }
+            } catch (e) { log(e); }
+        }
+
+        function openAdmin() {
+            const pass = prompt('Administrator parolini kiriting:');
+            if (pass === '789456123') {
+                window.location.href = '/admin';
+            } else if (pass) {
+                tg.showAlert('Noto\'g\'ri parol!');
+            }
+        }
+
+        (function() {
+            const loader = document.getElementById('loader-screen');
+            const content = document.getElementById('app-content');
+
+            setTimeout(() => {
+                loader.style.opacity = '0';
+
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    content.classList.remove('loader-hidden');
+                    document.body.style.overflow = 'auto';
+                }, 800);
+            }, 5000);
+        })();
+    </script>
+</body>
+</html>
