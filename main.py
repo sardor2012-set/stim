@@ -20,8 +20,8 @@ import threading
 from urllib.parse import quote
 import functools
 
-TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
-WEBAPP_URL = "https://3076cc49-b6bb-406c-8bef-a6676562354f-00-2g7qu7jjlr7fw.sisko.replit.dev/"
+TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
+WEBAPP_URL = "https://stim-5xw5.onrender.com/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
