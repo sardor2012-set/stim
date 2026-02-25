@@ -1840,13 +1840,13 @@
 
         function closeTasksModal() {
             stopBundleTimer();
-            
+
             // CRITICAL: If user answered some questions and exits, submit score and mark as completed
             // This prevents users from getting partial points and retaking the same test
             const hasAnswers = bundleAnswers && Object.keys(bundleAnswers).length > 0;
             const allQuestionsAnswered = currentBundleQuestions && currentBundleQuestions.length > 0 && 
                 bundleAnswers && Object.keys(bundleAnswers).length >= currentBundleQuestions.length;
-            
+
             if (hasAnswers && currentBundle) {
                 // Calculate score for answered questions
                 let earnedScore = 0;
@@ -1857,11 +1857,11 @@
                         earnedCorrect++;
                     }
                 }
-                
+
                 // Cap score to maximum possible
                 const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (q.rating || 5), 0);
                 const finalScore = Math.min(earnedScore, maxPossibleScore);
-                
+
                 // Submit score and mark as completed
                 fetch('/api/tasks/complete', {
                     method: 'POST',
@@ -1883,7 +1883,7 @@
             } else if (currentBundle) {
                 clearBundleState();
             }
-            
+
             document.getElementById('tasks-modal').style.display = 'none';
         }
 
@@ -2216,9 +2216,50 @@
 
         async function initApp() {
             initTheme();
+            // Notify Telegram that the Mini App is ready
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.ready();
+            }
+
+            // First try URL params (passed from bot keyboard button), then Telegram data, then localStorage
             const urlParams = new URLSearchParams(window.location.search);
-            const user_id = urlParams.get('user_id') || (tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null);
+            let user_id = urlParams.get('user_id');
+
+            // ALWAYS prefer Telegram initData over URL params and localStorage for security
+            // This ensures we always get the correct current user
+            const initDataUser = tg.initDataUnsafe?.user;
+            if (initDataUser && initDataUser.id) {
+                user_id = initDataUser.id;
+
+                // Clear any cached user_id if it differs from Telegram user
+                const cachedUserId = localStorage.getItem('cached_user_id');
+                if (cachedUserId && String(cachedUserId) !== String(user_id)) {
+                    console.log('Telegram user changed, clearing old cache');
+                    localStorage.removeItem('cached_user_id');
+                    localStorage.removeItem(`user_profile_${cachedUserId}`);
+                }
+            }
+
+            // Only use cached user_id if Telegram data is not available
+            if (!user_id) {
+                user_id = localStorage.getItem('cached_user_id');
+            } else {
+                // Always update cache with current Telegram user
+                localStorage.setItem('cached_user_id', user_id);
+            }
+
             globalUserId = user_id;
+
+            // Show user name from Telegram immediately while loading
+            const initUser = tg.initDataUnsafe?.user;
+            if (initUser) {
+                const tempName = initUser.first_name || '...';
+                const tempAvatar = initUser.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(tempName === '...' ? 'U' : tempName)}&background=random`;
+                const usernameEl = document.getElementById('username');
+                const avatarEl = document.getElementById('avatar');
+                if (usernameEl) usernameEl.textContent = tempName;
+                if (avatarEl) avatarEl.src = tempAvatar;
+            }
 
             if (!globalUserId) {
                 document.getElementById('loader-screen').style.display = 'none';
@@ -2263,6 +2304,27 @@
                 }, 800);
             } catch (error) {
                 console.error("Foydalanuvchini olishda xato:", error);
+                // Try to load from cached profile data
+                const cachedProfile = localStorage.getItem(`user_profile_${globalUserId}`);
+                if (cachedProfile) {
+                    try {
+                        const data = JSON.parse(cachedProfile);
+                        console.log("Cached profile loaded");
+                        document.getElementById('loader-screen').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('loader-screen').style.display = 'none';
+                            if (data.is_registered) {
+                                showAppContent(data);
+                            } else {
+                                document.getElementById('registration-modal').style.display = 'flex';
+                            }
+                        }, 800);
+                        return;
+                    } catch (e) {
+                        console.error("Failed to parse cached profile:", e);
+                    }
+                }
+                // If no cache, show error
                 document.getElementById('loader-screen').style.display = 'none';
                 document.getElementById('error-msg').style.display = 'block';
             }
@@ -2355,6 +2417,9 @@
 
             console.log('League info:', leagueInfo);
             console.log('User league:', profileData.league);
+
+            // Cache user profile data for offline/faster loading
+            localStorage.setItem(`user_profile_${globalUserId}`, JSON.stringify(userData));
 
             if (userData.photo && userData.photo !== 'null' && userData.photo !== 'undefined' && userData.photo !== 'None' && userData.photo !== '') {
                 localStorage.setItem(`user_photo_${globalUserId}`, userData.photo);
@@ -3494,46 +3559,98 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('app-content').style.display = 'none';
 
-            let userId = null;
+            // If we already have globalUserId from a previous load, use it
+            // This prevents showing "..." when reloading after alerts
+            let userId = globalUserId || null;
             let userName = null;
             let userPhoto = null;
 
+            // Try to get fresh Telegram data
             const initDataUser = tg.initDataUnsafe?.user;
             if (initDataUser && initDataUser.id) {
                 userId = initDataUser.id;
-                userName = initDataUser.first_name || initDataUser.username;
+                userName = initDataUser.first_name;
                 userPhoto = initDataUser.photo_url;
-                log("initDataUnsafe dan foydalanuvchi: " + userId);
+
+                // Clear any cached user_id if it differs from Telegram user
+                const cachedUserId = localStorage.getItem('cached_user_id');
+                if (cachedUserId && String(cachedUserId) !== String(userId)) {
+                    console.log('Telegram user changed, clearing old cache');
+                    localStorage.removeItem('cached_user_id');
+                    localStorage.removeItem(`user_profile_${cachedUserId}`);
+                }
+                localStorage.setItem('cached_user_id', userId);
+            }
+
+            // Only use cached user_id if we still don't have one
+            if (!userId) {
+                userId = localStorage.getItem('cached_user_id');
             }
 
             if (!userId) {
                 // ONLY use Telegram authentication - never fall back to URL parameters for security
                 // This prevents users from seeing other users' accounts via shared links
                 log("Foydalanuvchi ID si topilmadi - Telegram autentifikatsiyasi kutmoqda");
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                document.getElementById('username').innerText = 'Foydalanuvchi (Mehmon)';
-                return;
+
+                // Wait for tg.ready and check again
+                if (window.Telegram && Telegram.WebApp) {
+                    Telegram.WebApp.ready();
+                    const initDataUser = Telegram.WebApp.initDataUnsafe?.user;
+                    if (initDataUser && initDataUser.id) {
+                        userId = initDataUser.id;
+                        globalUserId = userId;
+                        localStorage.setItem('cached_user_id', userId);
+                    }
+                }
+
+                if (!userId) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('app-content').style.display = 'block';
+                    document.getElementById('username').innerText = 'Foydalanuvchi (Mehmon)';
+                    return;
+                }
             }
+
+            // Cache user_id for future sessions
+            localStorage.setItem('cached_user_id', userId);
 
             globalUserId = userId;
             if (tg && tg.MainButton) tg.MainButton.hide();
 
-            const firstName = userName || 'Foydalanuvchi';
-            document.getElementById('username').innerText = firstName;
+            // Show user name from Telegram immediately if available, otherwise keep existing display
+            // Use cached name if available and Telegram data is not accessible
+            const existingName = document.getElementById('username')?.innerText;
+            const isPlaceholderName = (existingName === '...' || existingName === 'Foydalanuvchi (Mehmon)');
+
+            let displayName = userName || (tg.initDataUnsafe?.user?.first_name);
+
+            // If we don't have fresh Telegram data but have a valid existing name, keep it
+            if (!displayName && existingName && !isPlaceholderName) {
+                displayName = existingName;
+            }
+
+            displayName = displayName || '...';
+            document.getElementById('username').innerText = displayName;
 
             const avatarImg = document.getElementById('avatar');
-            const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}&background=random`;
+            const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName === '...' ? 'U' : displayName)}&background=random`;
 
-            if (userPhoto && userPhoto !== 'null' && userPhoto !== 'undefined') {
-                avatarImg.src = userPhoto;
+            // Show avatar from Telegram if available, otherwise show generic
+            let displayPhoto = userPhoto || (tg.initDataUnsafe?.user?.photo_url);
+            if (displayPhoto && displayPhoto !== 'null' && displayPhoto !== 'undefined') {
+                avatarImg.src = displayPhoto;
                 avatarImg.onerror = function() {
-                    log("Rasm yuklash muvaffaqiyatsiz, standartga o'tilmoqda");
                     this.src = defaultAvatar;
                     this.onerror = null;
                 };
             } else {
-                avatarImg.src = defaultAvatar;
+                // Keep existing avatar if valid
+                const currentSrc = avatarImg.src;
+                if (currentSrc && !currentSrc.includes('ui-avatars.com') && !currentSrc.includes('?name=')) {
+                    // Keep current avatar
+                } else {
+                    avatarImg.src = defaultAvatar;
+                }
             }
 
             const ratingEl = document.getElementById('user-rating');
@@ -3601,7 +3718,7 @@
 
                         const OWNER_ID = "7612340818";
 
-                        let userDisplayName = data.display_name || firstName;
+                        let userDisplayName = data.display_name || data.first_name || 'Foydalanuvchi';
 
                         let iconHtml = '';
                         if (String(userId) === OWNER_ID) {
@@ -3693,6 +3810,48 @@
                     })
                     .catch(function(e) {
                         console.log("Yuklash xatosi: " + e.message);
+
+                        // Try to load from cached profile data
+                        const cachedProfile = localStorage.getItem(`user_profile_${userId}`);
+                        if (cachedProfile) {
+                            try {
+                                const data = JSON.parse(cachedProfile);
+                                console.log("Cached profile loaded in loadData");
+                                // Use cached data to populate UI
+                                profileData.first_name = data.first_name || '';
+                                profileData.last_name = data.last_name || '';
+                                profileData.class_name = data.class_name || '';
+                                profileData.rating = data.rating || 0;
+
+                                const rEl = document.getElementById('user-rating');
+                                if (rEl) rEl.innerText = data.rating || 0;
+                                document.getElementById('status-text').innerText = data.status || 'O\'quvchi';
+
+                                const leagueInfo = getLeagueFromClass(data.class_name);
+                                profileData.league = leagueInfo.league;
+
+                                const leagueText = document.getElementById('league-text');
+                                if (leagueText) leagueText.textContent = profileData.league || '---';
+
+                                const classDisplay = document.getElementById('class-display');
+                                if (classDisplay && data.class_name) classDisplay.innerText = data.class_name;
+
+                                // Show cached username
+                                let userDisplayName = data.display_name || firstName;
+                                document.getElementById('username').innerText = userDisplayName;
+
+                                // Show cached avatar
+                                const avatarImg = document.getElementById('avatar');
+                                if (data.photo && data.photo !== 'null' && data.photo !== 'undefined') {
+                                    avatarImg.src = data.photo;
+                                }
+
+                                return;
+                            } catch (parseError) {
+                                console.error("Failed to parse cached profile:", parseError);
+                            }
+                        }
+
                         retries--;
                         setTimeout(tryFetch, 1500);
                     });
