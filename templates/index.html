@@ -1840,10 +1840,50 @@
 
         function closeTasksModal() {
             stopBundleTimer();
-            // Save state before closing
-            if (currentBundle && bundleAnswers !== undefined) {
-                saveBundleState();
+            
+            // CRITICAL: If user answered some questions and exits, submit score and mark as completed
+            // This prevents users from getting partial points and retaking the same test
+            const hasAnswers = bundleAnswers && Object.keys(bundleAnswers).length > 0;
+            const allQuestionsAnswered = currentBundleQuestions && currentBundleQuestions.length > 0 && 
+                bundleAnswers && Object.keys(bundleAnswers).length >= currentBundleQuestions.length;
+            
+            if (hasAnswers && currentBundle) {
+                // Calculate score for answered questions
+                let earnedScore = 0;
+                let earnedCorrect = 0;
+                for (const [qIdx, answer] of Object.entries(bundleAnswers)) {
+                    if (answer && answer.is_correct) {
+                        earnedScore += answer.rating || 5;
+                        earnedCorrect++;
+                    }
+                }
+                
+                // Cap score to maximum possible
+                const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (q.rating || 5), 0);
+                const finalScore = Math.min(earnedScore, maxPossibleScore);
+                
+                // Submit score and mark as completed
+                fetch('/api/tasks/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: globalUserId,
+                        score: finalScore,
+                        task_id: currentBundle.item_id,
+                        is_correct: allQuestionsAnswered,
+                        correct_count: earnedCorrect,
+                        incorrect_count: Object.keys(bundleAnswers).length - earnedCorrect,
+                        answers: bundleAnswers
+                    })
+                }).then(() => {
+                    clearBundleState();
+                    loadUserBalance();
+                    loadBundles();
+                });
+            } else if (currentBundle) {
+                clearBundleState();
             }
+            
             document.getElementById('tasks-modal').style.display = 'none';
         }
 
