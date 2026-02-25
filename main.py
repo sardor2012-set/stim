@@ -3,23 +3,221 @@ import logging
 import sqlite3
 import os
 import json
+import time
+from collections import defaultdict
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.dispatcher.middlewares.base import BaseMiddleware
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import threading
 from urllib.parse import quote
+import functools
 
-TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
-WEBAPP_URL = "https://stim-5xw5.onrender.com/"
+TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
+WEBAPP_URL = "https://3076cc49-b6bb-406c-8bef-a6676562354f-00-2g7qu7jjlr7fw.sisko.replit.dev/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
+
+# ==================== ANTI-SPAM & ANTI-DDOS CONFIG ====================
+# Anti-spam settings for Telegram bot
+SPAM_LIMIT = 5  # Max messages per time window
+SPAM_TIME_WINDOW = 3  # Time window in seconds
+SPAM_BLOCK_DURATION = 300  # Block duration in seconds (5 minutes)
+AUTO_BLOCK_THRESHOLD = 3  # Number of violations before auto-block
+
+# Anti-DDoS settings for Flask
+FLASK_RATE_LIMIT = 100  # Max requests per time window
+FLASK_RATE_WINDOW = 60  # Time window in seconds
+FLASK_DDOS_BLOCK_DURATION = 300  # Block duration in seconds
+
+# In-memory storage for rate limiting
+user_message_timestamps = defaultdict(list)
+violation_counts = defaultdict(int)
+ip_request_timestamps = defaultdict(list)
+blocked_users = {}  # Dict of blocked user IDs with block timestamp
+blocked_ips = {}  # Dict of blocked IPs with block timestamp
+
+
+# ==================== ANTI-SPAM MIDDLEWARE ====================
+class AntiSpamMiddleware(BaseMiddleware):
+    """
+    Middleware for preventing spam in Telegram bot.
+    Limits the number of messages a user can send in a given time window.
+    """
+
+    def __init__(self, limit: int = SPAM_LIMIT, window: int = SPAM_TIME_WINDOW):
+        self.limit = limit
+        self.window = window
+        super().__init__()
+
+    async def __call__(self, handler, event, data):
+        """Process the event through anti-spam filter."""
+        # Only process messages and callback queries
+        if isinstance(event, (Message, CallbackQuery)):
+            user_id = event.from_user.id if event.from_user else None
+
+            if user_id is None:
+                return await handler(event, data)
+
+            # Check if user is blocked and auto-unblock if time expired
+            if user_id in blocked_users:
+                block_time = blocked_users[user_id]
+                if time.time() - block_time >= SPAM_BLOCK_DURATION:
+                    # Unblock user
+                    del blocked_users[user_id]
+                    violation_counts[user_id] = 0
+                    user_message_timestamps[user_id] = []
+                    logger.info(f"User {user_id} has been auto-unblocked")
+                else:
+                    await self._notify_blocked(event, user_id)
+                    return
+
+            # Clean old timestamps
+            current_time = time.time()
+            user_message_timestamps[user_id] = [
+                ts for ts in user_message_timestamps[user_id]
+                if current_time - ts < self.window
+            ]
+
+            # Check message rate
+            if len(user_message_timestamps[user_id]) >= self.limit:
+                # User exceeded the limit
+                violation_counts[user_id] += 1
+
+                logger.warning(f"Spam detected from user {user_id}. Violation count: {violation_counts[user_id]}")
+
+                # Auto-block if threshold exceeded
+                if violation_counts[user_id] >= AUTO_BLOCK_THRESHOLD:
+                    blocked_users[user_id] = time.time()
+                    await self._block_user(user_id)
+                    await self._notify_blocked(event, user_id)
+                else:
+                    # Just warn the user
+                    await self._warn_user(event)
+
+                return  # Don't process the message
+
+            # Add current timestamp
+            user_message_timestamps[user_id].append(current_time)
+
+        return await handler(event, data)
+
+    async def _warn_user(self, event):
+        """Send a warning to the user about rate limiting."""
+        try:
+            if isinstance(event, Message):
+                await event.answer(
+                    f"<tg-emoji emoji-id=\"5447644880824181073\">⚠️</tg-emoji> Juda ko‘p xabar yuboryapsiz! Iltimos, xabarlar orasida {self.window} soniya kuting.\n"
+                    f"Qoidani yana buzsangiz, bloklanasiz.",
+                    show_alert=True, parse_mode='HTML'
+                )
+            elif isinstance(event, CallbackQuery):
+                await event.answer(
+                    f"<tg-emoji emoji-id=\"5447644880824181073\">⚠️</tg-emoji> Juda ko‘p so‘rov yuboryapsiz! {self.window} soniya kuting.",
+                    show_alert=True, parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.error(f"Error sending warning: {e}")
+
+    async def _notify_blocked(self, event, user_id):
+        """Notify user that they are blocked."""
+        try:
+            block_time = SPAM_BLOCK_DURATION // 60
+            if isinstance(event, Message):
+                await event.answer(
+                    f"<tg-emoji emoji-id=\"5240241223632954241\">🚫</tg-emoji> Spam uchun siz {block_time} daqiqaga bloklandingiz.\n"
+                    f"Agar bu xatolik bo‘lsa, administratorga murojaat qiling.",
+                    show_alert=True, parse_mode='HTML'
+                )
+            elif isinstance(event, CallbackQuery):
+                await event.answer(
+                    f"<tg-emoji emoji-id=\"5240241223632954241\">🚫</tg-emoji> Spam uchun siz {block_time} daqiqaga bloklandingiz.",
+                    show_alert=True, parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.error(f"Error notifying blocked user: {e}")
+
+    async def _block_user(self, user_id):
+        """Block user temporarily in memory (not in database)."""
+        # Note: We don't block in database for auto-blocks, only in memory
+        # This allows automatic unblock after the duration expires
+        logger.info(f"User {user_id} has been temporarily blocked for spam (in-memory)")
+
+
+# Function to unblock user after block duration
+async def check_and_unblock_users():
+    """Background task to check and unblock users when block duration expires."""
+    while True:
+        try:
+            current_time = time.time()
+            # This would require storing block times - simplified version
+            # In production, you'd store block timestamps in a dict
+            await asyncio.sleep(60)
+        except Exception as e:
+            logger.error(f"Error in unblock check: {e}")
+            await asyncio.sleep(60)
+
+
+# ==================== FLASK RATE LIMITING ====================
+def rate_limit_ip(limit: int = FLASK_RATE_LIMIT, window: int = FLASK_RATE_WINDOW):
+    """
+    Rate limiting decorator for Flask routes.
+    Prevents DDoS attacks by limiting requests from a single IP.
+    """
+    def decorator(f):
+        @functools.wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Get client IP
+            client_ip = request.remote_addr
+
+            # Check if IP is blocked and auto-unblock if expired
+            if client_ip in blocked_ips:
+                block_time = blocked_ips[client_ip]
+                if time.time() - block_time >= FLASK_DDOS_BLOCK_DURATION:
+                    # Unblock IP
+                    del blocked_ips[client_ip]
+                    ip_request_timestamps[client_ip] = []
+                    logger.info(f"IP {client_ip} has been auto-unblocked")
+                else:
+                    return jsonify({
+                        "error": "Juda ko‘p so‘rov yubordingiz. Siz 5 daqiqaga bloklandingiz.",
+                        "blocked": True
+                    }), 429
+
+            # Clean old timestamps
+            current_time = time.time()
+            ip_request_timestamps[client_ip] = [
+                ts for ts in ip_request_timestamps[client_ip]
+                if current_time - ts < window
+            ]
+
+            # Check request rate
+            if len(ip_request_timestamps[client_ip]) >= limit:
+                # Block the IP
+                blocked_ips[client_ip] = time.time()
+                logger.warning(f"DDoS attempt detected from IP: {client_ip}")
+
+                return jsonify({
+                    "error": "Juda ko‘p so‘rov yubordingiz. Iltimos, kuting.",
+                    "rate_limit_exceeded": True
+                }), 429
+
+            # Add current timestamp
+            ip_request_timestamps[client_ip].append(current_time)
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -97,6 +295,7 @@ def get_user_row(user, key, default=None):
     return user[key] if user and key in user.keys() else default
 
 @app.route('/api/user/<int:user_id>')
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def get_user_api(user_id):
     try:
         username = request.args.get('username', f"User {user_id}")
@@ -237,6 +436,7 @@ def get_user_api(user_id):
         return jsonify({"message": str(e)}), 500
 
 @app.route('/api/register', methods=['POST'])
+@rate_limit_ip(limit=20, window=60)  # Stricter limit for registration
 def register_user():
     try:
         data = request.json
@@ -252,6 +452,7 @@ def register_user():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/tasks/complete', methods=['POST'])
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def complete_tasks():
     try:
         data = request.json
@@ -308,6 +509,7 @@ def complete_tasks():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/bundle/start', methods=['POST'])
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def start_bundle():
     try:
         data = request.json
@@ -328,6 +530,7 @@ def start_bundle():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/bundle/check-time', methods=['POST'])
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def check_bundle_time():
     try:
         data = request.json
@@ -363,6 +566,7 @@ def check_bundle_time():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/user/<int:user_id>/tasks')
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def get_user_tasks(user_id):
     try:
         with get_db() as db:
@@ -416,6 +620,7 @@ def get_user_purchases(user_id):
     return jsonify({"purchases": []})
 
 @app.route('/api/items')
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def get_items():
     try:
         with get_db() as db:
@@ -426,6 +631,7 @@ def get_items():
         return jsonify([]), 500
 
 @app.route('/api/user/nickname', methods=['POST'])
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def set_nickname():
     try:
         data = request.json
@@ -526,6 +732,7 @@ def edit_bundle(bundle_id):
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/admin/stats')
+@rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def admin_stats():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({}), 403
@@ -725,6 +932,12 @@ def run_flask():
 # Telegram Bot
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# Register anti-spam middleware
+spam_middleware = AntiSpamMiddleware(limit=SPAM_LIMIT, window=SPAM_TIME_WINDOW)
+dp.message.middleware.register(spam_middleware)
+dp.callback_query.middleware.register(spam_middleware)
+
 router = Router()
 
 class AdminState(StatesGroup):
@@ -820,7 +1033,7 @@ async def cmd_start(message: Message):
         with get_db() as db:
             db_user = db.execute("SELECT is_blocked FROM users WHERE user_id = ?", (user.id,)).fetchone()
             if db_user and db_user['is_blocked']:
-                await message.answer("<tg-emoji emoji-id=\"5260293700088511294\">⛔</tg-emoji> <b>Kirish taqiqlangan</b>\n\nSizning akkauntingiz bu botda bloklangan.\nBlokdan chiqarish uchun administratorga murojaat qiling: @money_userrs\n\n<i>Murojaat uchun ID: {user.id}</i>", parse_mode='HTML')
+                await message.answer("<tg-emoji emoji-id=\"5260293700088511294\">⛔</tg-emoji> <b>Kirish taqiqlangan</b>\n\nSizning akkauntingiz bu botda bloklangan.\nBlokdan chiqarish uchun administratorga murojaat qiling: @s_narzimurodov\n\n<i>Murojaat uchun ID: {user.id}</i>", parse_mode='HTML')
                 return
 
         is_subscribed = await verify_subscription(user.id, force_check=True)
@@ -867,6 +1080,21 @@ async def cmd_admin(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="🔓 Panerni yopish", callback_data="admin_close")]
     ])
     await message.answer("Admin panelga xush kelibsiz:", reply_markup=keyboard)
+
+@router.message(Command("db"))
+async def cmd_db(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("Sizda ushbu komandaga ruxsat yo'q.")
+        return
+    if not os.path.exists('bot.db'):
+        await message.answer("❌ Bazaviy fayl topilmadi.")
+        return
+    try:
+        await message.answer("📦 Bazaviy fayl jo'natilmoqda...")
+        await message.answer_document(document=FSInputFile('bot.db', filename='bot.db'))
+    except Exception as e:
+        logger.error(f"Error sending database file: {e}")
+        await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
 
 @router.message(Command("done"))
 async def cmd_done(message: Message, state: FSMContext):
@@ -944,7 +1172,7 @@ async def menu_top_ratings(message: Message):
 
 @router.message(F.text == "Yordam")
 async def menu_help(message: Message):
-    support_text = "<tg-emoji emoji-id=\"5334544901428229844\">🆘</tg-emoji> <b>Yordam (Qo'llab-quvvatlash)</b>\n\nAgar sizda muammo yoki savollar bo'lsa:\n\n<tg-emoji emoji-id=\"5253742260054409879\">📧</tg-emoji> <b>Administrator bilan bog'lanish:</b>\n• @money_userrs ga yozing\n\n<tg-emoji emoji-id=\"5823268688874179761\">🔧</tg-emoji> <b>Ko'p beriladigan savollar:</b>\n• <i>Vazifalarni qanday boshlash mumkin?</i> - 'Vazifalar' tugmasini bosing\n• <i>Reytingni qanday oshirish mumkin?</i> - Vazifalarni to'g'ri bajaring\n• <i>Ro'yxatdan o'tishda muammo bormi?</i> - Administratorga murojaat qiling\n\n<tg-emoji emoji-id=\"5224607267797606837\">⚡</tg-emoji> <b>Biz har doim yordam berishga tayyormiz!</b>"
+    support_text = "<tg-emoji emoji-id=\"5334544901428229844\">🆘</tg-emoji> <b>Yordam (Qo'llab-quvvatlash)</b>\n\nAgar sizda muammo yoki savollar bo'lsa:\n\n<tg-emoji emoji-id=\"5253742260054409879\">📧</tg-emoji> <b>Administrator bilan bog'lanish:</b>\n• @s_narzimurodov ga yozing\n\n<tg-emoji emoji-id=\"5823268688874179761\">🔧</tg-emoji> <b>Ko'p beriladigan savollar:</b>\n• <i>Vazifalarni qanday boshlash mumkin?</i> - 'Vazifalar' tugmasini bosing\n• <i>Reytingni qanday oshirish mumkin?</i> - Vazifalarni to'g'ri bajaring\n• <i>Ro'yxatdan o'tishda muammo bormi?</i> - Administratorga murojaat qiling\n\n<tg-emoji emoji-id=\"5224607267797606837\">⚡</tg-emoji> <b>Biz har doim yordam berishga tayyormiz!</b>"
     await message.answer(support_text, parse_mode='HTML', reply_markup=main_menu_keyboard_no_webapp())
 
 @router.message(F.text == "Menu")
@@ -1317,10 +1545,49 @@ async def admin_unblock_user_id(message: Message, state: FSMContext):
 
 dp.include_router(router)
 
+
+# Function to clean up old rate limiting data
+def cleanup_rate_limit_data():
+    """Background task to clean up old rate limiting data."""
+    while True:
+        try:
+            current_time = time.time()
+
+            # Clean old user timestamps
+            for user_id in list(user_message_timestamps.keys()):
+                user_message_timestamps[user_id] = [
+                    ts for ts in user_message_timestamps[user_id]
+                    if current_time - ts < SPAM_TIME_WINDOW
+                ]
+                if not user_message_timestamps[user_id]:
+                    del user_message_timestamps[user_id]
+
+            # Clean old IP timestamps
+            for ip in list(ip_request_timestamps.keys()):
+                ip_request_timestamps[ip] = [
+                    ts for ts in ip_request_timestamps[ip]
+                    if current_time - ts < FLASK_RATE_WINDOW
+                ]
+                if not ip_request_timestamps[ip]:
+                    del ip_request_timestamps[ip]
+
+            logger.debug("Rate limit data cleaned up")
+
+        except Exception as e:
+            logger.error(f"Error cleaning up rate limit data: {e}")
+
+        time.sleep(60)  # Run every minute
+
+
 async def main():
     init_db()
+
+    # Start cleanup thread
+    cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
+    cleanup_thread.start()
+
     threading.Thread(target=run_flask, daemon=True).start()
-    logger.info("Бот запущен (aiogram 3)")
+    logger.info("Бот запущен (aiogram 3) с анти-спам и анти-DDoS защитой")
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot, allowed_updates=['message', 'callback_query'])
