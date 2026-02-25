@@ -16,7 +16,7 @@ import threading
 from urllib.parse import quote
 
 TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
-WEBAPP_URL = "https://stim.rf.gd/"
+WEBAPP_URL = "https://stimquiz-bot.onrender.com/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
