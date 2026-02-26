@@ -22,7 +22,7 @@ import functools
 
 import github_backup
 
-TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
+TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
 WEBAPP_URL = "https://0a196571-4e2f-4130-bcbd-81ccd5307afb-00-1yo7z3hiega8z.sisko.replit.dev/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
@@ -1627,6 +1627,13 @@ async def main():
             backup_path=os.environ.get('BACKUP_PATH', 'backups'),
             auto_save_interval=int(os.environ.get('AUTO_SAVE_INTERVAL', 300))
         )
+        # Try to restore from GitHub if no database exists
+        if not os.path.exists('bot.db'):
+            logger.info("No local database found, restoring from GitHub...")
+            if github_backup.restore_from_github():
+                logger.info("Database restored from GitHub successfully")
+            else:
+                logger.info("Could not restore from GitHub, starting with fresh database")
         github_backup.start_auto_save()
         logger.info("GitHub auto-backup started")
     else:
