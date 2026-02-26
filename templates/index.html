@@ -1848,18 +1848,21 @@
                 bundleAnswers && Object.keys(bundleAnswers).length >= currentBundleQuestions.length;
 
             if (hasAnswers && currentBundle) {
+                // Prevent duplicate submission during close
+                if (window.isSubmittingBundle) return;
+                window.isSubmittingBundle = true;
+
                 // Calculate score for answered questions
-                let earnedScore = 0;
                 let earnedCorrect = 0;
                 for (const [qIdx, answer] of Object.entries(bundleAnswers)) {
                     if (answer && answer.is_correct) {
-                        earnedScore += answer.rating || 5;
                         earnedCorrect++;
                     }
                 }
+                const earnedScore = earnedCorrect * (currentBundleQuestions[0]?.rating || 5);
 
                 // Cap score to maximum possible
-                const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (q.rating || 5), 0);
+                const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (parseInt(q.rating) || 5), 0);
                 const finalScore = Math.min(earnedScore, maxPossibleScore);
 
                 // Submit score and mark as completed
@@ -1879,6 +1882,9 @@
                     clearBundleState();
                     loadUserBalance();
                     loadBundles();
+                    window.isSubmittingBundle = false;
+                }).catch(() => {
+                    window.isSubmittingBundle = false;
                 });
             } else if (currentBundle) {
                 clearBundleState();
@@ -2004,6 +2010,13 @@
                 return;
             }
 
+            // CRITICAL: Prevent double submission by checking if already submitting
+            if (window.isSubmittingBundle) {
+                console.log('Already submitting bundle, ignoring duplicate call');
+                return;
+            }
+            window.isSubmittingBundle = true;
+
             // Stop the timer
             stopBundleTimer();
 
@@ -2012,24 +2025,23 @@
             let calculatedCorrect = 0;
             for (const [qIdx, answer] of Object.entries(bundleAnswers)) {
                 if (answer && answer.is_correct) {
-                    calculatedScore += answer.rating || 5;
                     calculatedCorrect++;
                 }
             }
+            // Use the rating of the first question as a base if not specified
+            const questionBaseRating = currentBundleQuestions[0]?.rating || 5;
+            calculatedScore = calculatedCorrect * questionBaseRating;
 
             console.log('=== FINAL SCORE CALCULATION ===');
-            console.log('bundleScore from variables:', bundleScore);
             console.log('calculatedScore:', calculatedScore);
-            console.log('bundleCorrect from variables:', bundleCorrect);
             console.log('calculatedCorrect:', calculatedCorrect);
-            console.log('bundleAnswers:', JSON.stringify(bundleAnswers, null, 2));
 
             // Use calculated values for reliability
-            const finalScore = calculatedScore > 0 ? calculatedScore : bundleScore;
-            const finalCorrect = calculatedCorrect > 0 ? calculatedCorrect : bundleCorrect;
+            const finalScore = calculatedScore;
+            const finalCorrect = calculatedCorrect;
 
             // CRITICAL: Cap the score to the maximum possible rating for this bundle
-            const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (q.rating || 5), 0);
+            const maxPossibleScore = currentBundleQuestions.reduce((sum, q) => sum + (parseInt(q.rating) || 5), 0);
             const cappedScore = Math.min(finalScore, maxPossibleScore);
 
             try {
@@ -2051,13 +2063,12 @@
                     body: JSON.stringify(requestData)
                 });
 
-                console.log('Response status:', response.status);
-
                 const result = await response.json();
-                console.log('Response result:', result);
-
+                
                 if (response.ok && (result.success === true || result.success === undefined)) {
-                    closeTasksModal();
+                    // Close the modal immediately before clearing state
+                    document.getElementById('tasks-modal').style.display = 'none';
+                    
                     clearBundleState();
                     loadUserBalance();
                     loadBundles();
@@ -2065,7 +2076,7 @@
                     document.getElementById('success-title').innerText = "To'plam yakunlandi!";
                     document.getElementById('success-message-content').innerHTML = `
                         Siz <b>${currentBundleQuestions.length}</b> ta savoldan <b>${finalCorrect}</b> tasiga to'g'ri javob berdingiz.<br>
-                        Olingan reyting: <b>+${finalScore}</b>
+                        Olingan reyting: <b>+${cappedScore}</b>
                     `;
                     document.getElementById('success-modal').style.display = 'block';
                 } else {
@@ -2074,6 +2085,8 @@
             } catch (e) {
                 console.error('To\'plamni yakunlash xatosi:', e);
                 tg.showAlert('Natijalarni saqlashda tarmoq xatosi: ' + e.message);
+            } finally {
+                window.isSubmittingBundle = false;
             }
         }
 
@@ -2105,12 +2118,10 @@
             // Update score based on answer change
             if (isCorrect) {
                 if (!wasPreviousCorrect) {
-                    bundleScore += questionRating;
                     bundleCorrect++;
                 }
             } else {
                 if (wasPreviousCorrect) {
-                    bundleScore -= questionRating;
                     bundleCorrect--;
                 }
             }
@@ -2229,23 +2240,20 @@
             // This ensures we always get the correct current user
             const initDataUser = tg.initDataUnsafe?.user;
             if (initDataUser && initDataUser.id) {
-                user_id = initDataUser.id;
+                user_id = String(initDataUser.id);
 
                 // Clear any cached user_id if it differs from Telegram user
                 const cachedUserId = localStorage.getItem('cached_user_id');
                 if (cachedUserId && String(cachedUserId) !== String(user_id)) {
                     console.log('Telegram user changed, clearing old cache');
-                    localStorage.removeItem('cached_user_id');
-                    localStorage.removeItem(`user_profile_${cachedUserId}`);
+                    localStorage.clear(); // Clear everything to be safe
                 }
+                localStorage.setItem('cached_user_id', user_id);
             }
 
             // Only use cached user_id if Telegram data is not available
             if (!user_id) {
                 user_id = localStorage.getItem('cached_user_id');
-            } else {
-                // Always update cache with current Telegram user
-                localStorage.setItem('cached_user_id', user_id);
             }
 
             globalUserId = user_id;
