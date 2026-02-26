@@ -23,7 +23,7 @@ import functools
 import github_backup
 
 TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
-WEBAPP_URL = "https://0a196571-4e2f-4130-bcbd-81ccd5307afb-00-1yo7z3hiega8z.sisko.replit.dev/"
+WEBAPP_URL = "https://stim-s2em.onrender.com/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
