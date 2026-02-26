@@ -20,8 +20,10 @@ import threading
 from urllib.parse import quote
 import functools
 
-TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
-WEBAPP_URL = "https://stim-39i9.onrender.com/"
+import github_backup
+
+TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
+WEBAPP_URL = "https://0a196571-4e2f-4130-bcbd-81ccd5307afb-00-1yo7z3hiega8z.sisko.replit.dev/"
 WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
@@ -278,6 +280,7 @@ def init_db():
             db.execute("INSERT INTO system_settings (key, value) VALUES ('season_start', ?)", (datetime.now().isoformat(),))
 
         db.commit()
+        github_backup.auto_push()
 
 app = Flask(__name__)
 CORS(app)
@@ -307,12 +310,14 @@ def get_user_api(user_id):
             if not user:
                 db.execute("INSERT OR IGNORE INTO users (user_id, username, photo_url) VALUES (?, ?, ?)", (user_id, username, photo_param))
                 db.commit()
+                github_backup.auto_push()
                 user = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
 
             photo_url = get_user_row(user, 'photo_url')
             if photo_param and photo_param != photo_url:
                 db.execute("UPDATE users SET photo_url = ? WHERE user_id = ?", (photo_param, user_id))
                 db.commit()
+                github_backup.auto_push()
                 photo_url = photo_param
 
             rating = get_user_row(user, 'rating', 0)
@@ -446,6 +451,7 @@ def register_user():
         with get_db() as db:
             db.execute("UPDATE users SET first_name = ?, last_name = ?, class_name = ?, is_registered = TRUE WHERE user_id = ?", (first_name, last_name, class_name, user_id))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error in register_user: {e}")
@@ -503,6 +509,7 @@ def complete_tasks():
             if task_id:
                 db.execute("INSERT OR REPLACE INTO user_tasks (user_id, task_id, is_correct, earned_rating, answers, correct_count, incorrect_count) VALUES (?, ?, ?, ?, ?, ?, ?)", (user_id, task_id, is_correct, score, json.dumps(answers), correct_count, incorrect_count))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error completing tasks: {e}")
@@ -524,6 +531,7 @@ def start_bundle():
             now = datetime.now().isoformat()
             db.execute("INSERT OR REPLACE INTO user_tasks (user_id, task_id, started_at, completed_at) VALUES (?, ?, ?, ?)", (user_id, task_id, now, now))
             db.commit()
+            github_backup.auto_push()
             return jsonify({"success": True, "started_at": now})
     except Exception as e:
         logger.error(f"Error starting bundle: {e}")
@@ -638,6 +646,7 @@ def set_nickname():
         with get_db() as db:
             db.execute("UPDATE users SET server_nick = ? WHERE user_id = ?", (data.get('nickname'), data.get('user_id')))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -683,6 +692,7 @@ def add_bundle():
                     continue
                 db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q.get('question', '').strip(), q.get('options', '').strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
             db.commit()
+            github_backup.auto_push()
             return jsonify({"success": True, "bundle_id": bundle_id})
     except Exception as e:
         logger.error(f"Error adding bundle: {e}")
@@ -700,6 +710,7 @@ def delete_bundle(bundle_id):
             db.execute("DELETE FROM bundle_questions WHERE bundle_id = ?", (bundle_id,))
             db.execute("DELETE FROM task_bundles WHERE id = ?", (bundle_id,))
             db.commit()
+            github_backup.auto_push()
             return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error deleting bundle: {e}")
@@ -726,6 +737,7 @@ def edit_bundle(bundle_id):
                     continue
                 db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'].strip(), q['options'].strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
             db.commit()
+            github_backup.auto_push()
             return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error editing bundle: {e}")
@@ -806,6 +818,7 @@ def create_promo():
         with get_db() as db:
             db.execute("INSERT INTO promos (code, discount_percent, category, is_one_time) VALUES (?, ?, ?, ?)", (data['code'], data['discount'], data['category'], data['is_one_time']))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -818,6 +831,7 @@ def delete_promo(code):
         with get_db() as db:
             db.execute("DELETE FROM promos WHERE code = ?", (code,))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -837,6 +851,7 @@ def admin_order_action(order_id, action_type):
         with get_db() as db:
             db.execute("UPDATE purchases SET status = ? WHERE purchase_id = ?", (status, order_id))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except:
         return jsonify({"success": False}), 500
@@ -862,6 +877,7 @@ def admin_delete_user(user_id):
             db.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
             db.execute("DELETE FROM user_tasks WHERE user_id = ?", (user_id,))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error deleting user: {e}")
@@ -876,6 +892,7 @@ def admin_update_user(user_id):
         with get_db() as db:
             db.execute("UPDATE users SET first_name = ?, last_name = ?, class_name = ?, rating = ?, username = ? WHERE user_id = ?", (data.get('first_name'), data.get('last_name'), data.get('class_name'), data.get('rating'), data.get('username'), user_id))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error updating user: {e}")
@@ -891,6 +908,7 @@ def admin_block_user(user_id):
         with get_db() as db:
             db.execute("UPDATE users SET is_blocked = ? WHERE user_id = ?", (blocked, user_id))
             db.commit()
+            github_backup.auto_push()
         return jsonify({"success": True, "is_blocked": blocked})
     except Exception as e:
         logger.error(f"Error blocking user: {e}")
@@ -920,6 +938,7 @@ def reset_season():
             db.execute("DELETE FROM user_tasks")
             db.execute("UPDATE system_settings SET value = ? WHERE key = 'season_start'", (datetime.now().isoformat(),))
             db.commit()
+            github_backup.auto_push()
         logger.info("Season reset successful")
         return jsonify({"success": True, "message": "Mavsumni muvaffaqiyatli qayta boshlash"})
     except Exception as e:
@@ -985,6 +1004,7 @@ async def get_profile_photo(user_id):
             with get_db() as db:
                 db.execute("UPDATE users SET photo_url = ? WHERE user_id = ?", (photo_url, user_id))
                 db.commit()
+                github_backup.auto_push()
     except Exception as e:
         logger.error(f"Error getting user photo: {e}")
     return photo_url
@@ -1015,6 +1035,7 @@ async def verify_subscription(user_id, force_check=False):
             is_subscribed = await check_subscription(user_id)
             db.execute("UPDATE users SET is_subscribed = ?, last_sub_check = CURRENT_TIMESTAMP WHERE user_id = ?", (is_subscribed, user_id))
             db.commit()
+            github_backup.auto_push()
             return is_subscribed
         return user_data['is_subscribed']
 
@@ -1029,6 +1050,7 @@ async def cmd_start(message: Message):
         with get_db() as db:
             db.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)", (user.id, user.username or ""))
             db.commit()
+            github_backup.auto_push()
 
         with get_db() as db:
             db_user = db.execute("SELECT is_blocked FROM users WHERE user_id = ?", (user.id,)).fetchone()
@@ -1115,6 +1137,7 @@ async def cmd_done(message: Message, state: FSMContext):
             for q in questions:
                 db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
             db.commit()
+            github_backup.auto_push()
         await message.answer(f"✅ <b>To'plam yaratildi!</b>\n\n📦 Nomi: {bundle_name}\n📝 Savollar soni: {len(questions)}\n\nTo'plam endi Mini App'da mavjud.", parse_mode='HTML')
     except Exception as e:
         await message.answer(f"❌ To'plamni yaratishda xatolik yuz berdi: {str(e)}")
@@ -1357,6 +1380,7 @@ async def admin_reset_confirm_callback(callback: CallbackQuery):
         db.execute("DELETE FROM user_tasks")
         db.execute("UPDATE system_settings SET value = ? WHERE key = 'season_start'", (datetime.now().isoformat(),))
         db.commit()
+        github_backup.auto_push()
     await callback.message.edit_text("✅ Mavsum muvaffaqiyatli qayta boshlash!\n\nBarcha reytinglar va vazifalar tarixi tozalandi.")
 
 @router.callback_query(F.data == "admin_close")
@@ -1388,6 +1412,7 @@ async def admin_block_specific_callback(callback: CallbackQuery):
     with get_db() as db:
         db.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = ?", (user_id,))
         db.commit()
+        github_backup.auto_push()
     await callback.message.edit_text(f"✅ Пользователь {user_id} заблокирован.")
 
 @router.callback_query(F.data.startswith("admin_unblock_"))
@@ -1397,6 +1422,7 @@ async def admin_unblock_specific_callback(callback: CallbackQuery):
     with get_db() as db:
         db.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = ?", (user_id,))
         db.commit()
+        github_backup.auto_push()
     await callback.message.edit_text(f"✅ Пользователь {user_id} разблокирован.")
 
 @router.callback_query(F.data == "admin_back")
@@ -1475,6 +1501,7 @@ async def admin_bundle_question(message: Message, state: FSMContext):
                 for q in questions:
                     db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
                 db.commit()
+                github_backup.auto_push()
             await message.answer(f"✅ <b>Сборка создана!</b>\n\n📦 Название: {bundle_name}\n📝 Вопросов: {len(questions)}\n\nСборка теперь доступна в Mini App.", parse_mode='HTML')
         except Exception as e:
             await message.answer(f"❌ To'plamni yaratishda xatolik yuz berdi: {str(e)}")
@@ -1520,6 +1547,7 @@ async def admin_block_user_id(message: Message, state: FSMContext):
             return
         db.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = ?", (target_user_id,))
         db.commit()
+        github_backup.auto_push()
     await message.answer(f"✅ Пользователь с ID {target_user_id} заблокирован.\n\nОн не сможет использовать бота и Mini App.")
 
 @router.message(AdminState.waiting_unblock_user_id)
@@ -1541,6 +1569,7 @@ async def admin_unblock_user_id(message: Message, state: FSMContext):
             return
         db.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = ?", (target_user_id,))
         db.commit()
+        github_backup.auto_push()
     await message.answer(f"✅ Пользователь с ID {target_user_id} разблокирован.\n\nОн снова может использовать бота и Mini App.")
 
 dp.include_router(router)
@@ -1585,6 +1614,23 @@ async def main():
     # Start cleanup thread
     cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
     cleanup_thread.start()
+
+    # Configure and start GitHub auto-backup if credentials are available
+    github_token = os.environ.get('GITHUB_TOKEN', '')
+    github_repo = os.environ.get('GITHUB_REPO', '')
+    if github_token and github_repo:
+        github_backup.configure(
+            github_token=github_token,
+            github_repo=github_repo,
+            github_branch=os.environ.get('GITHUB_BRANCH', 'main'),
+            db_path='bot.db',
+            backup_path=os.environ.get('BACKUP_PATH', 'backups'),
+            auto_save_interval=int(os.environ.get('AUTO_SAVE_INTERVAL', 300))
+        )
+        github_backup.start_auto_save()
+        logger.info("GitHub auto-backup started")
+    else:
+        logger.info("GitHub auto-backup not configured (set GITHUB_TOKEN and GITHUB_REPO env vars)")
 
     threading.Thread(target=run_flask, daemon=True).start()
     logger.info("Бот запущен (aiogram 3) с анти-спам и анти-DDoS защитой")
