@@ -1118,6 +1118,38 @@ async def cmd_db(message: Message):
         logger.error(f"Error sending database file: {e}")
         await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
 
+@router.message(Command("backup"))
+async def cmd_backup(message: Message):
+    """Команда для создания резервной копии базы данных в GitHub"""
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("Sizda ushbu komandaga ruxsat yo'q.")
+        return
+    
+    github_token = os.environ.get('GITHUB_TOKEN', '')
+    github_repo = os.environ.get('GITHUB_REPO', '')
+    
+    if not github_token or not github_repo:
+        await message.answer("❌ GitHub не настроен. Установите GITHUB_TOKEN и GITHUB_REPO")
+        return
+    
+    try:
+        github_backup.configure(
+            github_token=github_token,
+            github_repo=github_repo,
+            github_branch=os.environ.get('GITHUB_BRANCH', 'main'),
+            db_path='bot.db',
+            backup_path=os.environ.get('BACKUP_PATH', 'backups')
+        )
+        await message.answer("⏳ Резервная копия загружается в GitHub...")
+        
+        if github_backup.push_db(message="Manual backup by admin"):
+            await message.answer("✅ Резервная копия успешно создана!")
+        else:
+            await message.answer("❌ Ошибка при создании резервной копии")
+    except Exception as e:
+        logger.error(f"Error creating backup: {e}")
+        await message.answer(f"❌ Ошибка: {str(e)}")
+
 @router.message(Command("done"))
 async def cmd_done(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -1609,13 +1641,7 @@ def cleanup_rate_limit_data():
 
 
 async def main():
-    init_db()
-
-    # Start cleanup thread
-    cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
-    cleanup_thread.start()
-
-    # Configure and start GitHub auto-backup if credentials are available
+    # Configure GitHub backup first
     github_token = os.environ.get('GITHUB_TOKEN', '')
     github_repo = os.environ.get('GITHUB_REPO', '')
     if github_token and github_repo:
@@ -1627,17 +1653,25 @@ async def main():
             backup_path=os.environ.get('BACKUP_PATH', 'backups'),
             auto_save_interval=int(os.environ.get('AUTO_SAVE_INTERVAL', 300))
         )
-        # Try to restore from GitHub if no database exists
-        if not os.path.exists('bot.db'):
-            logger.info("No local database found, restoring from GitHub...")
-            if github_backup.restore_from_github():
-                logger.info("Database restored from GitHub successfully")
-            else:
-                logger.info("Could not restore from GitHub, starting with fresh database")
-        github_backup.start_auto_save()
-        logger.info("GitHub auto-backup started")
+        # Try to restore from GitHub BEFORE init_db
+        logger.info("Checking for existing backup in GitHub...")
+        if github_backup.restore_from_github():
+            logger.info("Database restored from GitHub successfully")
+        else:
+            logger.info("No backup found in GitHub, starting with fresh database")
     else:
         logger.info("GitHub auto-backup not configured (set GITHUB_TOKEN and GITHUB_REPO env vars)")
+    
+    init_db()
+
+    # Start cleanup thread
+    cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
+    cleanup_thread.start()
+
+    # Start GitHub auto-backup
+    if github_token and github_repo:
+        github_backup.start_auto_save()
+        logger.info("GitHub auto-backup started")
 
     threading.Thread(target=run_flask, daemon=True).start()
     logger.info("Бот запущен (aiogram 3) с анти-спам и анти-DDoS защитой")
