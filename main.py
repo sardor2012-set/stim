@@ -1,7 +1,6 @@
 import asyncio
 import logging
-import psycopg2
-import psycopg2.extras
+import sqlite3
 import os
 import json
 import time
@@ -20,15 +19,6 @@ from flask_cors import CORS
 import threading
 from urllib.parse import quote
 import functools
-
-# PostgreSQL Database Configuration
-DB_CONFIG = {
-    'host': 'dpg-d6fpqa75r7bs73f24oi0-a.central-ca.postgres.render.com',
-    'port': 5432,
-    'database': 'stim_db',
-    'user': 'stim_user',
-    'password': 'tfiKLhbdxIEdnEvCG5hBJx5OSGRTQMud'
-}
 
 TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
 WEBAPP_URL = "https://stim-5xw5.onrender.com/"
@@ -235,8 +225,10 @@ logger = logging.getLogger(__name__)
 _active_channels_cache, _cache_timestamp, CACHE_DURATION = None, None, 60
 
 def get_db():
-    conn = psycopg2.connect(**DB_CONFIG)
-    conn.autocommit = False
+    conn = sqlite3.connect('bot.db', timeout=60)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    conn.row_factory = sqlite3.Row
     return conn
 
 def get_all_active_channels(force_refresh=False):
@@ -245,34 +237,32 @@ def get_all_active_channels(force_refresh=False):
     if force_refresh or _active_channels_cache is None or _cache_timestamp is None or (current_time - _cache_timestamp).total_seconds() > CACHE_DURATION:
         channels = dict(REQUIRED_CHANNELS)
         try:
-            conn = get_db()
-            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sponsors'")
-            if cursor.fetchone():
-                cursor.execute("SELECT channel_name, channel_id FROM sponsors WHERE is_active = TRUE")
-                for sponsor in cursor.fetchall():
-                    channels[sponsor['channel_name']] = sponsor['channel_id']
-            cursor.close()
-            conn.close()
+            with get_db() as db:
+                if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sponsors'").fetchone():
+                    for sponsor in db.execute("SELECT channel_name, channel_id FROM sponsors WHERE is_active = TRUE").fetchall():
+                        channels[sponsor['channel_name']] = sponsor['channel_id']
         except Exception as e:
             logger.error(f"Error fetching sponsors: {e}")
         _active_channels_cache, _cache_timestamp = channels, current_time
     return _active_channels_cache
 
 def init_db():
-    conn = get_db()
-    try:
-        cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS users (user_id BIGINT PRIMARY KEY, username TEXT, is_subscribed BOOLEAN DEFAULT FALSE, last_sub_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP, first_name TEXT, last_name TEXT, class_name TEXT, is_registered BOOLEAN DEFAULT FALSE, rating INTEGER DEFAULT 0, photo_url TEXT, is_blocked BOOLEAN DEFAULT FALSE, server_nick TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user_tasks (user_id BIGINT, task_id INTEGER, is_correct BOOLEAN, earned_rating INTEGER, completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, answers TEXT, correct_count INTEGER DEFAULT 0, incorrect_count INTEGER DEFAULT 0, started_at TIMESTAMP, PRIMARY KEY (user_id, task_id))''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS sponsors (id SERIAL PRIMARY KEY, channel_name TEXT NOT NULL, channel_id TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, discount_percent INTEGER, category TEXT, is_one_time BOOLEAN)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, user_id BIGINT, username TEXT, stars INTEGER, text TEXT, review_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS purchases (purchase_id SERIAL PRIMARY KEY, user_id BIGINT, item_id INTEGER, item_name TEXT, price INTEGER, status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, server_nick TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS task_bundles (id SERIAL PRIMARY KEY, name TEXT NOT NULL, league_id TEXT DEFAULT 'all', time_limit INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS bundle_questions (id SERIAL PRIMARY KEY, bundle_id INTEGER NOT NULL, question TEXT NOT NULL, options TEXT NOT NULL, correct_option INTEGER NOT NULL DEFAULT 0, rating INTEGER DEFAULT 5, FOREIGN KEY (bundle_id) REFERENCES task_bundles(id) ON DELETE CASCADE)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS items (item_id INTEGER PRIMARY KEY, name TEXT, price INTEGER, category TEXT, description TEXT, options TEXT, correct_option INTEGER)''')
+    with get_db() as db:
+        db.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, is_subscribed BOOLEAN DEFAULT FALSE, last_sub_check DATETIME DEFAULT CURRENT_TIMESTAMP, first_name TEXT, last_name TEXT, class_name TEXT, is_registered BOOLEAN DEFAULT FALSE, rating INTEGER DEFAULT 0, photo_url TEXT, is_blocked BOOLEAN DEFAULT FALSE, server_nick TEXT)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS user_tasks (user_id INTEGER, task_id INTEGER, is_correct BOOLEAN, earned_rating INTEGER, completed_at DATETIME DEFAULT CURRENT_TIMESTAMP, answers TEXT, correct_count INTEGER DEFAULT 0, incorrect_count INTEGER DEFAULT 0, started_at DATETIME, PRIMARY KEY (user_id, task_id))''')
+        db.execute('''CREATE TABLE IF NOT EXISTS sponsors (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_name TEXT NOT NULL, channel_id TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, discount_percent INTEGER, category TEXT, is_one_time BOOLEAN)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, username TEXT, stars INTEGER, text TEXT, review_time DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS purchases (purchase_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, item_id INTEGER, item_name TEXT, price INTEGER, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, server_nick TEXT)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS task_bundles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, league_id TEXT DEFAULT 'all', time_limit INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS bundle_questions (id INTEGER PRIMARY KEY AUTOINCREMENT, bundle_id INTEGER NOT NULL, question TEXT NOT NULL, options TEXT NOT NULL, correct_option INTEGER NOT NULL DEFAULT 0, rating INTEGER DEFAULT 5, FOREIGN KEY (bundle_id) REFERENCES task_bundles(id) ON DELETE CASCADE)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS items (item_id INTEGER PRIMARY KEY, name TEXT, price INTEGER, category TEXT, description TEXT, options TEXT, correct_option INTEGER)''')
+
+        for col in db.execute("PRAGMA table_info(users)").fetchall():
+            col_name = col[1]
+            if col_name == 'photo_url' and not db.execute("SELECT photo_url FROM users WHERE user_id = -1").fetchone():
+                pass
 
         items_data = [
             (1, 'Что означает этот знак + ?', 10, 'all', 'Математическая задача', 'знак принадлежности|пересечение|объединение|пустое множество', 2),
@@ -282,20 +272,12 @@ def init_db():
             (5, 'Химический символ золота?', 5, 'all', 'Химия', 'Ag|Au|Fe|Cu', 1)
         ]
         for item in items_data:
-            cursor.execute("INSERT INTO items (item_id, name, price, category, description, options, correct_option) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (item_id) DO UPDATE SET name = EXCLUDED.name", item)
+            db.execute("INSERT OR REPLACE INTO items (item_id, name, price, category, description, options, correct_option) VALUES (?, ?, ?, ?, ?, ?, ?)", item)
 
-        # Check if season_start exists
-        cursor.execute("SELECT value FROM system_settings WHERE key = 'season_start'")
-        if not cursor.fetchone():
-            cursor.execute("INSERT INTO system_settings (key, value) VALUES ('season_start', %s)", (datetime.now().isoformat(),))
+        if not db.execute("SELECT value FROM system_settings WHERE key = 'season_start'").fetchone():
+            db.execute("INSERT INTO system_settings (key, value) VALUES ('season_start', ?)", (datetime.now().isoformat(),))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        logger.error(f"Error initializing database: {e}")
-        if conn:
-            conn.close()
+        db.commit()
 
 app = Flask(__name__)
 CORS(app)
@@ -320,148 +302,135 @@ def get_user_api(user_id):
         name = request.args.get('name', username)
         photo_param = request.args.get('photo')
 
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-        user = cursor.fetchone()
-        if not user:
-            cursor.execute("INSERT INTO users (user_id, username, photo_url) VALUES (%s, %s, %s) ON CONFLICT (user_id) DO NOTHING", (user_id, username, photo_param))
-            conn.commit()
-            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-            user = cursor.fetchone()
+        with get_db() as db:
+            user = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            if not user:
+                db.execute("INSERT OR IGNORE INTO users (user_id, username, photo_url) VALUES (?, ?, ?)", (user_id, username, photo_param))
+                db.commit()
+                user = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
 
-        photo_url = user.get('photo_url')
-        if photo_param and photo_param != photo_url:
-            cursor.execute("UPDATE users SET photo_url = %s WHERE user_id = %s", (photo_param, user_id))
-            conn.commit()
-            photo_url = photo_param
+            photo_url = get_user_row(user, 'photo_url')
+            if photo_param and photo_param != photo_url:
+                db.execute("UPDATE users SET photo_url = ? WHERE user_id = ?", (photo_param, user_id))
+                db.commit()
+                photo_url = photo_param
 
-        rating = user.get('rating', 0)
-        display_name = name or username
+            rating = get_user_row(user, 'rating', 0)
+            display_name = name or username
 
-        if user:
-            f_name = user.get('first_name')
-            l_name = user.get('last_name')
-            if f_name and l_name:
-                display_name = f"{f_name} {l_name}"
-            elif f_name:
-                display_name = f_name
+            if user:
+                f_name = get_user_row(user, 'first_name')
+                l_name = get_user_row(user, 'last_name')
+                if f_name and l_name:
+                    display_name = f"{f_name} {l_name}"
+                elif f_name:
+                    display_name = f_name
 
-        class_name = user.get('class_name')
-        league, league_place, league_rank, top_players = "Boshlang'ich liga", "Hammasi", None, []
+            class_name = get_user_row(user, 'class_name')
+            league, league_place, league_rank, top_players = "Boshlang'ich liga", "Hammasi", None, []
 
-        if class_name:
-            clean_class = ''.join(filter(str.isdigit, class_name))
-            if clean_class:
-                class_num = int(clean_class)
-                if 1 <= class_num <= 4:
-                    league, league_place = "Boshlang'ich liga", "1-4 sinf"
-                    league_classes = ['1', '2', '3', '4', '1 класс', '2 класс', '3 класс', '4 класс']
-                elif 5 <= class_num <= 6:
-                    league, league_place = "Bronza liga", "5-6 sinf"
-                    league_classes = ['5', '6', '5 класс', '6 класс']
-                elif 7 <= class_num <= 8:
-                    league, league_place = "Kumush liga", "7-8 sinf"
-                    league_classes = ['7', '8', '7 класс', '8 класс']
-                elif 9 <= class_num <= 11:
-                    league, league_place = "Oltin liga", "9-11 sinf"
-                    league_classes = ['9', '10', '11', '9 класс', '10 класс', '11 класс']
+            if class_name:
+                clean_class = ''.join(filter(str.isdigit, class_name))
+                if clean_class:
+                    class_num = int(clean_class)
+                    if 1 <= class_num <= 4:
+                        league, league_place = "Boshlang'ich liga", "1-4 sinf"
+                        league_classes = ['1', '2', '3', '4', '1 класс', '2 класс', '3 класс', '4 класс']
+                    elif 5 <= class_num <= 6:
+                        league, league_place = "Bronza liga", "5-6 sinf"
+                        league_classes = ['5', '6', '5 класс', '6 класс']
+                    elif 7 <= class_num <= 8:
+                        league, league_place = "Kumush liga", "7-8 sinf"
+                        league_classes = ['7', '8', '7 класс', '8 класс']
+                    elif 9 <= class_num <= 11:
+                        league, league_place = "Oltin liga", "9-11 sinf"
+                        league_classes = ['9', '10', '11', '9 класс', '10 класс', '11 класс']
+                    else:
+                        league_classes = []
                 else:
                     league_classes = []
             else:
                 league_classes = []
-        else:
-            league_classes = []
 
-        if not league_classes:
-            league, league_place = "Umumiy liga", "Barcha sinflar"
+            if not league_classes:
+                league, league_place = "Umumiy liga", "Barcha sinflar"
 
-        try:
-            user_rating_value = rating
-            if league_classes:
-                placeholders = ','.join(['%s' for _ in league_classes])
-                clean_league_nums = [''.join(filter(str.isdigit, c)) for c in league_classes if ''.join(filter(str.isdigit, c))]
-                count_query = f"SELECT COUNT(*) as cnt FROM users WHERE (class_name IN ({placeholders})"
-                if clean_league_nums:
-                    count_query += f" OR {' OR '.join(['class_name LIKE %s' for _ in range(len(clean_league_nums)*2)])}"
-                count_query += ") AND (rating > %s OR (rating = %s AND user_id < %s))"
-                count_params = list(league_classes) + [f"{n}%" for n in clean_league_nums] + [f"%{n}" for n in clean_league_nums] + [user_rating_value, user_rating_value, user_id]
-                cursor.execute(count_query, count_params)
-                higher_count = cursor.fetchone()
-                league_rank = (higher_count['cnt'] or 0) + 1
-
-                query = f"SELECT user_id, rating, first_name, last_name, username, photo_url FROM users WHERE (class_name IN ({placeholders})"
-                if clean_league_nums:
-                    query += f" OR {' OR '.join(['class_name LIKE %s' for _ in range(len(clean_league_nums)*2)])}"
-                query += ") ORDER BY rating DESC, user_id ASC LIMIT 3"
-                cursor.execute(query, count_params[:-3])
-                league_top = cursor.fetchall()
-                for idx, lu in enumerate(league_top, 1):
-                    p_name = f"{lu['first_name']} {lu['last_name']}" if lu['first_name'] else (lu['username'] or f"User {lu['user_id']}")
-                    top_players.append({"user_id": lu['user_id'], "name": p_name, "rating": lu['rating'], "rank": idx, "photo": lu.get('photo_url')})
-            else:
-                cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE (rating > %s OR (rating = %s AND user_id < %s))", (user_rating_value, user_rating_value, user_id))
-                higher_count = cursor.fetchone()
-                league_rank = (higher_count['cnt'] or 0) + 1
-                cursor.execute("SELECT user_id, rating, first_name, last_name, username, photo_url FROM users ORDER BY rating DESC, user_id ASC LIMIT 3")
-                all_users = cursor.fetchall()
-                for idx, lu in enumerate(all_users, 1):
-                    p_name = f"{lu['first_name']} {lu['last_name']}" if lu['first_name'] else (lu['username'] or f"User {lu['user_id']}")
-                    top_players.append({"user_id": lu['user_id'], "name": p_name, "rating": lu['rating'], "rank": idx, "photo": lu.get('photo_url')})
-
-            all_leagues_tops = {}
-            leagues_config = {"Бронзовая лига": ['5', '6', '5 класс', '6 класс'], "Серебряная лига": ['7', '8', '7 класс', '8 класс'], "Золотая лига": ['9', '10', '11', '9 класс', '10 класс', '11 класс']}
-            for l_name, l_classes in leagues_config.items():
-                placeholders = ','.join(['%s' for _ in l_classes])
-                clean_league_nums = [''.join(filter(str.isdigit, c)) for c in l_classes if ''.join(filter(str.isdigit, c))]
-                query = f"SELECT user_id, rating, first_name, last_name, username, photo_url FROM users WHERE (class_name IN ({placeholders})"
-                if clean_league_nums:
-                    query += f" OR {' OR '.join(['class_name LIKE %s' for _ in range(len(clean_league_nums)*2)])}"
-                query += ") ORDER BY rating DESC LIMIT 3"
-                params = list(l_classes) + [f"{n}%" for n in clean_league_nums] + [f"%{n}" for n in clean_league_nums]
-                cursor.execute(query, params)
-                tops = cursor.fetchall()
-                all_leagues_tops[l_name] = [{"user_id": t['user_id'], "name": f"{t['first_name']} {t['last_name']}" if t['first_name'] else (t['username'] or f"User {t['user_id']}"), "rating": t['rating'], "photo": t.get('photo_url')} for t in tops]
-        except Exception as e:
-            logger.error(f"Error fetching top players: {e}")
-            all_leagues_tops = {}
-
-        season_days = 30
-        cursor.execute("SELECT value FROM system_settings WHERE key = 'season_start'")
-        season_start_val = cursor.fetchone()
-        if season_start_val:
             try:
-                start_dt = datetime.fromisoformat(season_start_val['value'])
-                season_days = max(0, 30 - (datetime.now() - start_dt).days)
-            except:
-                pass
+                user_rating_value = rating
+                if league_classes:
+                    placeholders = ','.join(['?' for _ in league_classes])
+                    clean_league_nums = [''.join(filter(str.isdigit, c)) for c in league_classes if ''.join(filter(str.isdigit, c))]
+                    count_query = f"SELECT COUNT(*) as cnt FROM users WHERE (class_name IN ({placeholders})"
+                    if clean_league_nums:
+                        count_query += f" OR {' OR '.join(['class_name LIKE ?' for _ in range(len(clean_league_nums)*2)])}"
+                    count_query += ") AND (rating > ? OR (rating = ? AND user_id < ?))"
+                    count_params = list(league_classes) + [f"{n}%" for n in clean_league_nums] + [f"%{n}" for n in clean_league_nums] + [user_rating_value, user_rating_value, user_id]
+                    higher_count = db.execute(count_query, count_params).fetchone()
+                    league_rank = (higher_count['cnt'] or 0) + 1
 
-        cursor.close()
-        conn.close()
+                    query = f"SELECT user_id, rating, first_name, last_name, username, photo_url FROM users WHERE (class_name IN ({placeholders})"
+                    if clean_league_nums:
+                        query += f" OR {' OR '.join(['class_name LIKE ?' for _ in range(len(clean_league_nums)*2)])}"
+                    query += ") ORDER BY rating DESC, user_id ASC LIMIT 3"
+                    league_top = db.execute(query, count_params[:-3]).fetchall()
+                    for idx, lu in enumerate(league_top, 1):
+                        p_name = f"{lu['first_name']} {lu['last_name']}" if lu['first_name'] else (lu['username'] or f"User {lu['user_id']}")
+                        top_players.append({"user_id": lu['user_id'], "name": p_name, "rating": lu['rating'], "rank": idx, "photo": get_user_row(lu, 'photo_url')})
+                else:
+                    higher_count = db.execute("SELECT COUNT(*) as cnt FROM users WHERE (rating > ? OR (rating = ? AND user_id < ?))", (user_rating_value, user_rating_value, user_id)).fetchone()
+                    league_rank = (higher_count['cnt'] or 0) + 1
+                    all_users = db.execute("SELECT user_id, rating, first_name, last_name, username, photo_url FROM users ORDER BY rating DESC, user_id ASC LIMIT 3").fetchall()
+                    for idx, lu in enumerate(all_users, 1):
+                        p_name = f"{lu['first_name']} {lu['last_name']}" if lu['first_name'] else (lu['username'] or f"User {lu['user_id']}")
+                        top_players.append({"user_id": lu['user_id'], "name": p_name, "rating": lu['rating'], "rank": idx, "photo": get_user_row(lu, 'photo_url')})
 
-        return jsonify({
-            "user_id": user_id,
-            "username": user.get('username') or username,
-            "first_name": user.get('first_name'),
-            "last_name": user.get('last_name'),
-            "class_name": class_name,
-            "is_registered": bool(user.get('is_registered', False)),
-            "rating": rating,
-            "referrals": rating,
-            "status": "Boshlang'ich" if rating < 50 else ("O'rganuvchi" if rating < 100 else "Master"),
-            "league": league,
-            "league_place": league_place,
-            "league_rank": league_rank,
-            "display_name": display_name,
-            "photo": photo_url,
-            "is_admin": str(user_id) in os.environ.get("ADMIN_IDS", "7592032451").split(','),
-            "server_nick": user.get('server_nick'),
-            "top_players": top_players,
-            "all_leagues_tops": all_leagues_tops,
-            "days_left": season_days,
-            "is_blocked": bool(user.get('is_blocked', False))
-        })
+                all_leagues_tops = {}
+                leagues_config = {"Бронзовая лига": ['5', '6', '5 класс', '6 класс'], "Серебряная лига": ['7', '8', '7 класс', '8 класс'], "Золотая лига": ['9', '10', '11', '9 класс', '10 класс', '11 класс']}
+                for l_name, l_classes in leagues_config.items():
+                    placeholders = ','.join(['?' for _ in l_classes])
+                    clean_league_nums = [''.join(filter(str.isdigit, c)) for c in l_classes if ''.join(filter(str.isdigit, c))]
+                    query = f"SELECT user_id, rating, first_name, last_name, username, photo_url FROM users WHERE (class_name IN ({placeholders})"
+                    if clean_league_nums:
+                        query += f" OR {' OR '.join(['class_name LIKE ?' for _ in range(len(clean_league_nums)*2)])}"
+                    query += ") ORDER BY rating DESC LIMIT 3"
+                    params = list(l_classes) + [f"{n}%" for n in clean_league_nums] + [f"%{n}" for n in clean_league_nums]
+                    tops = db.execute(query, params).fetchall()
+                    all_leagues_tops[l_name] = [{"user_id": t['user_id'], "name": f"{t['first_name']} {t['last_name']}" if t['first_name'] else (t['username'] or f"User {t['user_id']}"), "rating": t['rating'], "photo": get_user_row(t, 'photo_url')} for t in tops]
+            except Exception as e:
+                logger.error(f"Error fetching top players: {e}")
+                all_leagues_tops = {}
+
+            season_days = 30
+            season_start_val = db.execute("SELECT value FROM system_settings WHERE key = 'season_start'").fetchone()
+            if season_start_val:
+                try:
+                    start_dt = datetime.fromisoformat(season_start_val['value'])
+                    season_days = max(0, 30 - (datetime.now() - start_dt).days)
+                except:
+                    pass
+
+            return jsonify({
+                "user_id": user_id,
+                "username": get_user_row(user, 'username') or username,
+                "first_name": get_user_row(user, 'first_name'),
+                "last_name": get_user_row(user, 'last_name'),
+                "class_name": class_name,
+                "is_registered": bool(get_user_row(user, 'is_registered', False)),
+                "rating": rating,
+                "referrals": rating,
+                "status": "Boshlang'ich" if rating < 50 else ("O'rganuvchi" if rating < 100 else "Master"),
+                "league": league,
+                "league_place": league_place,
+                "league_rank": league_rank,
+                "display_name": display_name,
+                "photo": photo_url,
+                "is_admin": str(user_id) in os.environ.get("ADMIN_IDS", "7592032451").split(','),
+                "server_nick": get_user_row(user, 'server_nick'),
+                "top_players": top_players,
+                "all_leagues_tops": all_leagues_tops,
+                "days_left": season_days,
+                "is_blocked": bool(get_user_row(user, 'is_blocked', False))
+            })
     except Exception as e:
         logger.error(f"Error in get_user_api: {e}")
         return jsonify({"message": str(e)}), 500
@@ -474,12 +443,9 @@ def register_user():
         user_id, first_name, last_name, class_name = data.get('user_id'), data.get('first_name'), data.get('last_name'), data.get('class_name')
         if not all([user_id, first_name, last_name, class_name]):
             return jsonify({"success": False, "message": "Missing data"}), 400
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET first_name = %s, last_name = %s, class_name = %s, is_registered = TRUE WHERE user_id = %s", (first_name, last_name, class_name, user_id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE users SET first_name = ?, last_name = ?, class_name = ?, is_registered = TRUE WHERE user_id = ?", (first_name, last_name, class_name, user_id))
+            db.commit()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error in register_user: {e}")
@@ -502,60 +468,41 @@ def complete_tasks():
         if user_id is None:
             return jsonify({"success": False, "message": "Missing or invalid user_id"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (user_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "User not found"}), 404
+        with get_db() as db:
+            if not db.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,)).fetchone():
+                return jsonify({"success": False, "message": "User not found"}), 404
 
-        # Validate score - get max possible rating for this bundle
-        bundle_id = None
-        if task_id and task_id >= 1000:
-            bundle_id = task_id - 1000
-        elif task_id:
-            bundle_id = task_id
+            # Validate score - get max possible rating for this bundle
+            bundle_id = None
+            if task_id and task_id >= 1000:
+                bundle_id = task_id - 1000
+            elif task_id:
+                bundle_id = task_id
 
-        max_rating = 0
-        if bundle_id:
-            cursor.execute("SELECT COALESCE(SUM(rating), 0) as total FROM bundle_questions WHERE bundle_id = %s", (bundle_id,))
-            max_rating = cursor.fetchone()
-            max_rating = max_rating['total'] if max_rating else 0
+            max_rating = 0
+            if bundle_id:
+                max_rating = db.execute("SELECT COALESCE(SUM(rating), 0) as total FROM bundle_questions WHERE bundle_id = ?", (bundle_id,)).fetchone()
+                max_rating = max_rating['total'] if max_rating else 0
 
-        # Also check items table for single questions
-        if not max_rating and task_id and task_id < 1000:
-            cursor.execute("SELECT price FROM items WHERE item_id = %s", (task_id,))
-            item = cursor.fetchone()
-            if item:
-                max_rating = item['price']
+            # Also check items table for single questions
+            if not max_rating and task_id and task_id < 1000:
+                item = db.execute("SELECT price FROM items WHERE item_id = ?", (task_id,)).fetchone()
+                if item:
+                    max_rating = item['price']
 
-        # Cap the score to maximum possible rating
-        if score > max_rating:
-            logger.warning(f"User {user_id} tried to submit score {score} but max is {max_rating}. Capping.")
-            score = max_rating if max_rating > 0 else 0
+            # Cap the score to maximum possible rating
+            if score > max_rating:
+                logger.warning(f"User {user_id} tried to submit score {score} but max is {max_rating}. Capping.")
+                score = max_rating if max_rating > 0 else 0
 
-        # Ensure score is not negative
-        if score < 0:
-            score = 0
+            # Ensure score is not negative
+            if score < 0:
+                score = 0
 
-        cursor.execute("UPDATE users SET rating = rating + %s WHERE user_id = %s", (score, user_id))
-        if task_id:
-            cursor.execute("""
-                INSERT INTO user_tasks (user_id, task_id, is_correct, earned_rating, answers, correct_count, incorrect_count, completed_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (user_id, task_id) DO UPDATE SET
-                    is_correct = EXCLUDED.is_correct,
-                    earned_rating = EXCLUDED.earned_rating,
-                    answers = EXCLUDED.answers,
-                    correct_count = EXCLUDED.correct_count,
-                    incorrect_count = EXCLUDED.incorrect_count,
-                    completed_at = CURRENT_TIMESTAMP
-            """, (user_id, task_id, is_correct, score, json.dumps(answers), correct_count, incorrect_count))
-        conn.commit()
-        cursor.close()
-        conn.close()
+            db.execute("UPDATE users SET rating = rating + ? WHERE user_id = ?", (score, user_id))
+            if task_id:
+                db.execute("INSERT OR REPLACE INTO user_tasks (user_id, task_id, is_correct, earned_rating, answers, correct_count, incorrect_count) VALUES (?, ?, ?, ?, ?, ?, ?)", (user_id, task_id, is_correct, score, json.dumps(answers), correct_count, incorrect_count))
+            db.commit()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error completing tasks: {e}")
@@ -570,25 +517,14 @@ def start_bundle():
         if not user_id or not task_id:
             return jsonify({"success": False, "message": "Missing user_id or task_id"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT started_at FROM user_tasks WHERE user_id = %s AND task_id = %s", (user_id, task_id))
-        existing = cursor.fetchone()
-        if existing and existing.get('started_at'):
-            cursor.close()
-            conn.close()
-            return jsonify({"success": True, "started_at": existing['started_at'], "message": "Already started"})
-        now = datetime.now().isoformat()
-        cursor.execute("""
-            INSERT INTO user_tasks (user_id, task_id, started_at, completed_at)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (user_id, task_id) DO UPDATE SET started_at = EXCLUDED.started_at, completed_at = EXCLUDED.completed_at
-        """, (user_id, task_id, now, now))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "started_at": now})
+        with get_db() as db:
+            existing = db.execute("SELECT started_at FROM user_tasks WHERE user_id = ? AND task_id = ?", (user_id, task_id)).fetchone()
+            if existing and existing['started_at']:
+                return jsonify({"success": True, "started_at": existing['started_at'], "message": "Already started"})
+            now = datetime.now().isoformat()
+            db.execute("INSERT OR REPLACE INTO user_tasks (user_id, task_id, started_at, completed_at) VALUES (?, ?, ?, ?)", (user_id, task_id, now, now))
+            db.commit()
+            return jsonify({"success": True, "started_at": now})
     except Exception as e:
         logger.error(f"Error starting bundle: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -602,43 +538,29 @@ def check_bundle_time():
         if not user_id or not task_id:
             return jsonify({"success": False, "message": "Missing user_id or task_id"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT ut.started_at, tb.time_limit FROM user_tasks ut JOIN bundle_questions bq ON %s - 1000 = bq.bundle_id JOIN task_bundles tb ON bq.bundle_id = tb.id WHERE ut.user_id = %s AND ut.task_id = %s", (task_id, user_id, task_id))
-        user_task = cursor.fetchone()
-        cursor.execute("SELECT is_correct FROM user_tasks WHERE user_id = %s AND task_id = %s", (user_id, task_id))
-        task = cursor.fetchone()
-        if task and task.get('is_correct') is not None:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": True, "expired": True, "message": "Bundle already completed"})
-        if not user_task or not user_task.get('started_at'):
-            cursor.close()
-            conn.close()
-            return jsonify({"success": True, "expired": False, "started": False})
+        with get_db() as db:
+            user_task = db.execute("SELECT ut.started_at, tb.time_limit FROM user_tasks ut JOIN bundle_questions bq ON ? - 1000 = bq.bundle_id JOIN task_bundles tb ON bq.bundle_id = tb.id WHERE ut.user_id = ? AND ut.task_id = ?", (task_id, user_id, task_id)).fetchone()
+            task = db.execute("SELECT is_correct FROM user_tasks WHERE user_id = ? AND task_id = ?", (user_id, task_id)).fetchone()
+            if task and task['is_correct'] is not None:
+                return jsonify({"success": True, "expired": True, "message": "Bundle already completed"})
+            if not user_task or not user_task['started_at']:
+                return jsonify({"success": True, "expired": False, "started": False})
 
-        bundle_id = task_id - 1000
-        cursor.execute("SELECT time_limit FROM task_bundles WHERE id = %s", (bundle_id,))
-        bundle = cursor.fetchone()
-        time_limit = bundle['time_limit'] if bundle else 0
+            bundle_id = task_id - 1000
+            bundle = db.execute("SELECT time_limit FROM task_bundles WHERE id = ?", (bundle_id,)).fetchone()
+            time_limit = bundle['time_limit'] if bundle else 0
 
-        if time_limit <= 0:
-            cursor.close()
-            conn.close()
-            return jsonify({"success": True, "expired": False, "time_limit": 0})
+            if time_limit <= 0:
+                return jsonify({"success": True, "expired": False, "time_limit": 0})
 
-        started_at = datetime.fromisoformat(user_task['started_at'])
-        elapsed = (datetime.now() - started_at).total_seconds()
-        remaining = time_limit * 60 - elapsed
+            started_at = datetime.fromisoformat(user_task['started_at'])
+            elapsed = (datetime.now() - started_at).total_seconds()
+            remaining = time_limit * 60 - elapsed
 
-        cursor.close()
-        conn.close()
+            if remaining <= 0:
+                return jsonify({"success": True, "expired": True, "remaining_seconds": 0})
 
-        if remaining <= 0:
-            return jsonify({"success": True, "expired": True, "remaining_seconds": 0})
-
-        return jsonify({"success": True, "expired": False, "started_at": user_task['started_at'], "time_limit": time_limit, "remaining_seconds": int(remaining)})
+            return jsonify({"success": True, "expired": False, "started_at": user_task['started_at'], "time_limit": time_limit, "remaining_seconds": int(remaining)})
     except Exception as e:
         logger.error(f"Error checking bundle time: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -647,59 +569,48 @@ def check_bundle_time():
 @rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def get_user_tasks(user_id):
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT class_name FROM users WHERE user_id = %s", (user_id,))
-        user = cursor.fetchone()
-        user_class = user.get('class_name') if user else None
-        user_league = None
-        if user_class:
-            import re
-            match = re.search(r'(\d+)', user_class)
-            if match:
-                class_num = int(match.group(1))
-                if 5 <= class_num <= 6: user_league = 'bronza'
-                elif 7 <= class_num <= 8: user_league = 'kumush'
-                elif 9 <= class_num <= 11: user_league = 'oltin'
+        with get_db() as db:
+            user = db.execute("SELECT class_name FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            user_class = user['class_name'] if user else None
+            user_league = None
+            if user_class:
+                import re
+                match = re.search(r'(\d+)', user_class)
+                if match:
+                    class_num = int(match.group(1))
+                    if 5 <= class_num <= 6: user_league = 'bronza'
+                    elif 7 <= class_num <= 8: user_league = 'kumush'
+                    elif 9 <= class_num <= 11: user_league = 'oltin'
 
-        cursor.execute("SELECT * FROM task_bundles ORDER BY created_at DESC")
-        all_bundles = cursor.fetchall()
-        cursor.execute("SELECT task_id FROM user_tasks WHERE user_id = %s", (user_id,))
-        completed_rows = cursor.fetchall()
-        completed_ids = [row['task_id'] for row in completed_rows]
+            all_bundles = db.execute("SELECT * FROM task_bundles ORDER BY created_at DESC").fetchall()
+            completed_rows = db.execute("SELECT task_id FROM user_tasks WHERE user_id = ?", (user_id,)).fetchall()
+            completed_ids = [row['task_id'] for row in completed_rows]
 
-        active_list = []
-        for b in all_bundles:
-            bundle_id = b['id'] + 1000
-            bundle_league = b.get('league_id')
-            if bundle_league and user_league and bundle_league != user_league:
-                continue
-            if bundle_id not in completed_ids:
-                cursor.execute("SELECT * FROM bundle_questions WHERE bundle_id = %s", (b['id'],))
-                questions = cursor.fetchall()
-                if questions:
-                    questions_list = [{"id": q['id'], "question": q['question'], "options": q['options'], "correct_option": q['correct_option'], "rating": q['rating'] or 5} for q in questions]
-                    total_rating = sum(q['rating'] or 5 for q in questions)
-                    time_limit = b.get('time_limit', 0)
-                    active_list.append({"item_id": bundle_id, "name": b['name'], "category": "bundle", "questions": questions_list, "price": total_rating, "total_questions": len(questions_list), "time_limit": time_limit})
+            active_list = []
+            for b in all_bundles:
+                bundle_id = b['id'] + 1000
+                bundle_league = b['league_id'] if 'league_id' in b.keys() else None
+                if bundle_league and user_league and bundle_league != user_league:
+                    continue
+                if bundle_id not in completed_ids:
+                    questions = db.execute("SELECT * FROM bundle_questions WHERE bundle_id = ?", (b['id'],)).fetchall()
+                    if questions:
+                        questions_list = [{"id": q['id'], "question": q['question'], "options": q['options'], "correct_option": q['correct_option'], "rating": q['rating'] or 5} for q in questions]
+                        total_rating = sum(q['rating'] or 5 for q in questions)
+                        time_limit = b['time_limit'] if 'time_limit' in b.keys() else 0
+                        active_list.append({"item_id": bundle_id, "name": b['name'], "category": "bundle", "questions": questions_list, "price": total_rating, "total_questions": len(questions_list), "time_limit": time_limit})
 
-        completed_list = []
-        cursor.execute("SELECT * FROM user_tasks WHERE user_id = %s ORDER BY completed_at DESC", (user_id,))
-        completed_details = cursor.fetchall()
-        for row in completed_details:
-            task_id = row['task_id']
-            if task_id >= 1000:
-                bundle_db_id = task_id - 1000
-                cursor.execute("SELECT name FROM task_bundles WHERE id = %s", (bundle_db_id,))
-                bundle = cursor.fetchone()
-                if bundle:
-                    completed_list.append({"task_id": task_id, "name": bundle['name'], "earned_rating": row.get('earned_rating', 0), "correct_count": row.get('correct_count', 0), "incorrect_count": row.get('incorrect_count', 0), "answers": row.get('answers', '{}'), "is_correct": bool(row.get('is_correct')) if row.get('is_correct') is not None else False})
+            completed_list = []
+            completed_details = db.execute("SELECT * FROM user_tasks WHERE user_id = ? ORDER BY completed_at DESC", (user_id,)).fetchall()
+            for row in completed_details:
+                task_id = row['task_id']
+                if task_id >= 1000:
+                    bundle_db_id = task_id - 1000
+                    bundle = db.execute("SELECT name FROM task_bundles WHERE id = ?", (bundle_db_id,)).fetchone()
+                    if bundle:
+                        completed_list.append({"task_id": task_id, "name": bundle['name'], "earned_rating": row['earned_rating'] or 0, "correct_count": row['correct_count'] or 0, "incorrect_count": row['incorrect_count'] or 0, "answers": row['answers'] or '{}', "is_correct": bool(row['is_correct']) if row['is_correct'] is not None else False})
 
-        cursor.close()
-        conn.close()
-
-        return jsonify({"active": active_list, "completed": completed_list})
+            return jsonify({"active": active_list, "completed": completed_list})
     except Exception as e:
         logger.error(f"Error getting user tasks: {e}")
         return jsonify({"active": [], "completed": []}), 500
@@ -712,13 +623,9 @@ def get_user_purchases(user_id):
 @rate_limit_ip(limit=FLASK_RATE_LIMIT, window=FLASK_RATE_WINDOW)
 def get_items():
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM items")
-        items = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify([{"item_id": item['item_id'], "name": item['name'], "price": item['price'], "category": item['category'], "description": item['description'], "options": item['options'], "correct_option": item['correct_option']} for item in items])
+        with get_db() as db:
+            items = db.execute("SELECT * FROM items").fetchall()
+            return jsonify([{"item_id": item['item_id'], "name": item['name'], "price": item['price'], "category": item['category'], "description": item['description'], "options": item['options'], "correct_option": item['correct_option']} for item in items])
     except Exception as e:
         logger.error(f"Error getting items: {e}")
         return jsonify([]), 500
@@ -728,12 +635,9 @@ def get_items():
 def set_nickname():
     try:
         data = request.json
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET server_nick = %s WHERE user_id = %s", (data.get('nickname'), data.get('user_id')))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE users SET server_nick = ? WHERE user_id = ?", (data.get('nickname'), data.get('user_id')))
+            db.commit()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -746,19 +650,14 @@ def get_bundles():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify([]), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM task_bundles ORDER BY created_at DESC")
-        bundles = cursor.fetchall()
-        result = []
-        for b in bundles:
-            cursor.execute("SELECT * FROM bundle_questions WHERE bundle_id = %s", (b['id'],))
-            questions = cursor.fetchall()
-            questions_list = [{"id": q['id'], "question": q['question'], "options": q['options'], "correct_option": q['correct_option'], "rating": q['rating']} for q in questions]
-            result.append({"id": b['id'], "name": b['name'], "league_id": b.get('league_id', 'all'), "time_limit": b.get('time_limit', 0), "questions": questions_list, "created_at": b.get('created_at')})
-        cursor.close()
-        conn.close()
-        return jsonify(result)
+        with get_db() as db:
+            bundles = db.execute("SELECT * FROM task_bundles ORDER BY created_at DESC").fetchall()
+            result = []
+            for b in bundles:
+                questions = db.execute("SELECT * FROM bundle_questions WHERE bundle_id = ?", (b['id'],)).fetchall()
+                questions_list = [{"id": q['id'], "question": q['question'], "options": q['options'], "correct_option": q['correct_option'], "rating": q['rating']} for q in questions]
+                result.append({"id": b['id'], "name": b['name'], "league_id": get_user_row(b, 'league_id', 'all'), "time_limit": get_user_row(b, 'time_limit', 0), "questions": questions_list, "created_at": b['created_at']})
+            return jsonify(result)
     except Exception as e:
         logger.error(f"Error getting bundles: {e}")
         return jsonify([]), 500
@@ -776,18 +675,15 @@ def add_bundle():
         if not questions:
             return jsonify({"success": False, "message": "Добавьте хотя бы один вопрос"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO task_bundles (name, league_id, time_limit) VALUES (%s, %s, %s) RETURNING id", (name, league_id, time_limit))
-        bundle_id = cursor.fetchone()['id']
-        for q in questions:
-            if not q.get('question') or not q.get('options'):
-                continue
-            cursor.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (%s, %s, %s, %s, %s)", (bundle_id, q.get('question', '').strip(), q.get('options', '').strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True, "bundle_id": bundle_id})
+        with get_db() as db:
+            cursor = db.execute("INSERT INTO task_bundles (name, league_id, time_limit) VALUES (?, ?, ?)", (name, league_id, time_limit))
+            bundle_id = cursor.lastrowid
+            for q in questions:
+                if not q.get('question') or not q.get('options'):
+                    continue
+                db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q.get('question', '').strip(), q.get('options', '').strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
+            db.commit()
+            return jsonify({"success": True, "bundle_id": bundle_id})
     except Exception as e:
         logger.error(f"Error adding bundle: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -797,20 +693,14 @@ def delete_bundle(bundle_id):
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM task_bundles WHERE id = %s", (bundle_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Сборка не найдена"}), 404
-        cursor.execute("DELETE FROM user_tasks WHERE task_id = %s", (bundle_id + 1000,))
-        cursor.execute("DELETE FROM bundle_questions WHERE bundle_id = %s", (bundle_id,))
-        cursor.execute("DELETE FROM task_bundles WHERE id = %s", (bundle_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
+        with get_db() as db:
+            if not db.execute("SELECT id FROM task_bundles WHERE id = ?", (bundle_id,)).fetchone():
+                return jsonify({"success": False, "message": "Сборка не найдена"}), 404
+            db.execute("DELETE FROM user_tasks WHERE task_id = ?", (bundle_id + 1000,))
+            db.execute("DELETE FROM bundle_questions WHERE bundle_id = ?", (bundle_id,))
+            db.execute("DELETE FROM task_bundles WHERE id = ?", (bundle_id,))
+            db.commit()
+            return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error deleting bundle: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -826,23 +716,17 @@ def edit_bundle(bundle_id):
         if not name or not questions:
             return jsonify({"success": False, "message": "Название и вопросы обязательны"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM task_bundles WHERE id = %s", (bundle_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Сборка не найдена"}), 404
-        cursor.execute("UPDATE task_bundles SET name = %s, league_id = %s, time_limit = %s WHERE id = %s", (name, league_id, time_limit, bundle_id))
-        cursor.execute("DELETE FROM bundle_questions WHERE bundle_id = %s", (bundle_id,))
-        for q in questions:
-            if not q.get('question') or not q.get('options'):
-                continue
-            cursor.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (%s, %s, %s, %s, %s)", (bundle_id, q['question'].strip(), q['options'].strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"success": True})
+        with get_db() as db:
+            if not db.execute("SELECT id FROM task_bundles WHERE id = ?", (bundle_id,)).fetchone():
+                return jsonify({"success": False, "message": "Сборка не найдена"}), 404
+            db.execute("UPDATE task_bundles SET name = ?, league_id = ?, time_limit = ? WHERE id = ?", (name, league_id, time_limit, bundle_id))
+            db.execute("DELETE FROM bundle_questions WHERE bundle_id = ?", (bundle_id,))
+            for q in questions:
+                if not q.get('question') or not q.get('options'):
+                    continue
+                db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'].strip(), q['options'].strip(), int(q.get('correct_option', 0)), int(q.get('rating', 5))))
+            db.commit()
+            return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error editing bundle: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -853,45 +737,29 @@ def admin_stats():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT COUNT(*) as cnt FROM users")
-        total_users = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_registered = TRUE")
-        registered_users = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM user_tasks")
-        total_tasks = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COALESCE(SUM(rating), 0) as total FROM users")
-        total_rating = cursor.fetchone()['total']
-        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg FROM users WHERE rating > 0")
-        avg_rating = cursor.fetchone()['avg']
-        today = datetime.now().strftime('%Y-%m-%d')
-        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE date(last_sub_check) = %s", (today,))
-        new_today = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('5', '6', '5 класс', '6 класс') OR class_name LIKE '5%' OR class_name LIKE '6%'")
-        bronze = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('7', '8', '7 класс', '8 класс') OR class_name LIKE '7%' OR class_name LIKE '8%'")
-        silver = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('9', '10', '11', '9 класс', '10 класс', '11 класс') OR class_name LIKE '9%' OR class_name LIKE '10%' OR class_name LIKE '11%'")
-        gold = cursor.fetchone()['cnt']
-        cursor.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 10")
-        top_users = cursor.fetchall()
+        with get_db() as db:
+            total_users = db.execute("SELECT COUNT(*) as cnt FROM users").fetchone()['cnt']
+            registered_users = db.execute("SELECT COUNT(*) as cnt FROM users WHERE is_registered = TRUE").fetchone()['cnt']
+            total_tasks = db.execute("SELECT COUNT(*) as cnt FROM user_tasks").fetchone()['cnt']
+            total_rating = db.execute("SELECT COALESCE(SUM(rating), 0) as total FROM users").fetchone()['total']
+            avg_rating = db.execute("SELECT COALESCE(AVG(rating), 0) as avg FROM users WHERE rating > 0").fetchone()['avg']
+            today = datetime.now().strftime('%Y-%m-%d')
+            new_today = db.execute("SELECT COUNT(*) as cnt FROM users WHERE date(last_sub_check) = ?", (today,)).fetchone()['cnt']
+            bronze = db.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('5', '6', '5 класс', '6 класс') OR class_name LIKE '5%' OR class_name LIKE '6%'").fetchone()['cnt']
+            silver = db.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('7', '8', '7 класс', '8 класс') OR class_name LIKE '7%' OR class_name LIKE '8%'").fetchone()['cnt']
+            gold = db.execute("SELECT COUNT(*) as cnt FROM users WHERE class_name IN ('9', '10', '11', '9 класс', '10 класс', '11 класс') OR class_name LIKE '9%' OR class_name LIKE '10%' OR class_name LIKE '11%'").fetchone()['cnt']
+            top_users = db.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 10").fetchall()
 
-        cursor.execute("SELECT value FROM system_settings WHERE key = 'season_start'")
-        season_start_val = cursor.fetchone()
-        days_left = 30
-        if season_start_val:
-            try:
-                start_dt = datetime.fromisoformat(season_start_val['value'])
-                days_left = max(0, 30 - (datetime.now() - start_dt).days)
-            except:
-                pass
+            season_start_val = db.execute("SELECT value FROM system_settings WHERE key = 'season_start'").fetchone()
+            days_left = 30
+            if season_start_val:
+                try:
+                    start_dt = datetime.fromisoformat(season_start_val['value'])
+                    days_left = max(0, 30 - (datetime.now() - start_dt).days)
+                except:
+                    pass
 
-        cursor.close()
-        conn.close()
-
-        return jsonify({"total_users": total_users, "registered_users": registered_users, "total_tasks_completed": total_tasks, "total_rating": total_rating, "avg_rating": round(avg_rating, 1) if avg_rating else 0, "new_today": new_today, "days_left": days_left, "bronze_league": bronze, "silver_league": silver, "gold_league": gold, "top_users": [dict(u) for u in top_users]})
+            return jsonify({"total_users": total_users, "registered_users": registered_users, "total_tasks_completed": total_tasks, "total_rating": total_rating, "avg_rating": round(avg_rating, 1) if avg_rating else 0, "new_today": new_today, "days_left": days_left, "bronze_league": bronze, "silver_league": silver, "gold_league": gold, "top_users": [dict(u) for u in top_users]})
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
         return jsonify({}), 500
@@ -901,13 +769,9 @@ def admin_orders():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify([]), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM purchases WHERE status = 'pending'")
-        orders = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify([dict(o) for o in orders])
+        with get_db() as db:
+            orders = db.execute("SELECT * FROM purchases WHERE status = 'pending'").fetchall()
+            return jsonify([dict(o) for o in orders])
     except:
         return jsonify([]), 500
 
@@ -916,13 +780,9 @@ def admin_reviews():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify([]), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM reviews ORDER BY review_time DESC")
-        reviews = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify([dict(r) for r in reviews])
+        with get_db() as db:
+            reviews = db.execute("SELECT * FROM reviews ORDER BY review_time DESC").fetchall()
+            return jsonify([dict(r) for r in reviews])
     except:
         return jsonify([]), 500
 
@@ -931,13 +791,9 @@ def admin_promos():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify([]), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM promos")
-        promos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify([dict(p) for p in promos])
+        with get_db() as db:
+            promos = db.execute("SELECT * FROM promos").fetchall()
+            return jsonify([dict(p) for p in promos])
     except:
         return jsonify([]), 500
 
@@ -947,14 +803,11 @@ def create_promo():
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
         data = request.json
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO promos (code, discount_percent, category, is_one_time) VALUES (%s, %s, %s, %s)", (data['code'], data['discount'], data['category'], data['is_one_time']))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("INSERT INTO promos (code, discount_percent, category, is_one_time) VALUES (?, ?, ?, ?)", (data['code'], data['discount'], data['category'], data['is_one_time']))
+            db.commit()
         return jsonify({"success": True})
-    except Exception as e:
+    except:
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/admin/promo/delete/<code>', methods=['POST'])
@@ -962,14 +815,11 @@ def delete_promo(code):
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM promos WHERE code = %s", (code,))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("DELETE FROM promos WHERE code = ?", (code,))
+            db.commit()
         return jsonify({"success": True})
-    except Exception as e:
+    except:
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/admin/promo/stats/<code>')
@@ -984,12 +834,9 @@ def admin_order_action(order_id, action_type):
         return jsonify({"success": False}), 403
     try:
         status = 'completed' if action_type == 'confirm' else 'rejected'
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE purchases SET status = %s WHERE purchase_id = %s", (status, order_id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE purchases SET status = ? WHERE purchase_id = ?", (status, order_id))
+            db.commit()
         return jsonify({"success": True})
     except:
         return jsonify({"success": False}), 500
@@ -999,13 +846,9 @@ def admin_get_users():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify([]), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT * FROM users ORDER BY rating DESC")
-        users = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify([dict(u) for u in users])
+        with get_db() as db:
+            users = db.execute("SELECT * FROM users ORDER BY rating DESC").fetchall()
+            return jsonify([dict(u) for u in users])
     except Exception as e:
         logger.error(f"Error in admin_get_users: {e}")
         return jsonify([]), 500
@@ -1015,13 +858,10 @@ def admin_delete_user(user_id):
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
-        cursor.execute("DELETE FROM user_tasks WHERE user_id = %s", (user_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            db.execute("DELETE FROM user_tasks WHERE user_id = ?", (user_id,))
+            db.commit()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error deleting user: {e}")
@@ -1033,12 +873,9 @@ def admin_update_user(user_id):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
         data = request.json
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET first_name = %s, last_name = %s, class_name = %s, rating = %s, username = %s WHERE user_id = %s", (data.get('first_name'), data.get('last_name'), data.get('class_name'), data.get('rating'), data.get('username'), user_id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE users SET first_name = ?, last_name = ?, class_name = ?, rating = ?, username = ? WHERE user_id = ?", (data.get('first_name'), data.get('last_name'), data.get('class_name'), data.get('rating'), data.get('username'), user_id))
+            db.commit()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error updating user: {e}")
@@ -1051,12 +888,9 @@ def admin_block_user(user_id):
     try:
         action = request.args.get('action', 'block')
         blocked = action == 'block'
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET is_blocked = %s WHERE user_id = %s", (blocked, user_id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE users SET is_blocked = ? WHERE user_id = ?", (blocked, user_id))
+            db.commit()
         return jsonify({"success": True, "is_blocked": blocked})
     except Exception as e:
         logger.error(f"Error blocking user: {e}")
@@ -1067,15 +901,11 @@ def admin_user_status(user_id):
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT is_blocked FROM users WHERE user_id = %s", (user_id,))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if user:
-            return jsonify({"success": True, "is_blocked": bool(user['is_blocked'])})
-        return jsonify({"success": False, "message": "User not found"}), 404
+        with get_db() as db:
+            user = db.execute("SELECT is_blocked FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            if user:
+                return jsonify({"success": True, "is_blocked": bool(user['is_blocked'])})
+            return jsonify({"success": False, "message": "User not found"}), 404
     except Exception as e:
         logger.error(f"Error getting user status: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
@@ -1085,14 +915,11 @@ def reset_season():
     if not check_admin_pass(request.args.get('pass')):
         return jsonify({"success": False, "message": "Access denied"}), 403
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET rating = 0")
-        cursor.execute("DELETE FROM user_tasks")
-        cursor.execute("UPDATE system_settings SET value = %s WHERE key = 'season_start'", (datetime.now().isoformat(),))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("UPDATE users SET rating = 0")
+            db.execute("DELETE FROM user_tasks")
+            db.execute("UPDATE system_settings SET value = ? WHERE key = 'season_start'", (datetime.now().isoformat(),))
+            db.commit()
         logger.info("Season reset successful")
         return jsonify({"success": True, "message": "Mavsumni muvaffaqiyatli qayta boshlash"})
     except Exception as e:
@@ -1155,12 +982,9 @@ async def get_profile_photo(user_id):
         if photos.total_count > 0:
             file = await bot.get_file(photos.photos[0][-1].file_id)
             photo_url = f"https://api.telegram.org/file/bot{TOKEN}/{file.file_path}" if file.file_path and not file.file_path.startswith('http') else file.file_path
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute("UPDATE users SET photo_url = %s WHERE user_id = %s", (photo_url, user_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
+            with get_db() as db:
+                db.execute("UPDATE users SET photo_url = ? WHERE user_id = ?", (photo_url, user_id))
+                db.commit()
     except Exception as e:
         logger.error(f"Error getting user photo: {e}")
     return photo_url
@@ -1179,54 +1003,20 @@ async def check_subscription(user_id):
         return False
 
 async def verify_subscription(user_id, force_check=False):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT is_blocked FROM users WHERE user_id = %s", (user_id,))
-        db_user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
-        if db_user and db_user.get('is_blocked'):
+    with get_db() as db:
+        try:
+            user_data = db.execute("SELECT is_subscribed, last_sub_check FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        except sqlite3.OperationalError:
             return False
-        
-        for channel_name, channel_id in get_all_active_channels().items():
-            try:
-                member = await bot.get_chat_member(channel_id, user_id)
-                if member.status not in ['member', 'administrator', 'creator']:
-                    return False
-            except:
-                return False
-        return True
-    except Exception as e:
-        logger.error(f"Error in verify_subscription: {e}")
-        return False
-
-async def check_subscription_cached(user_id, force_check=False):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT is_subscribed, last_sub_check FROM users WHERE user_id = %s", (user_id,))
-        user_data = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
         if not user_data:
             return False
-        last_check = user_data.get('last_sub_check')
-        if last_check and force_check or (datetime.now() - last_check).total_seconds() > 3600:
+        last_check = datetime.strptime(user_data['last_sub_check'], '%Y-%m-%d %H:%M:%S') if isinstance(user_data['last_sub_check'], str) else user_data['last_sub_check']
+        if force_check or (datetime.now() - last_check).total_seconds() > 3600:
             is_subscribed = await check_subscription(user_id)
-            conn2 = get_db()
-            cursor2 = conn2.cursor()
-            cursor2.execute("UPDATE users SET is_subscribed = %s, last_sub_check = CURRENT_TIMESTAMP WHERE user_id = %s", (is_subscribed, user_id))
-            conn2.commit()
-            cursor2.close()
-            conn2.close()
+            db.execute("UPDATE users SET is_subscribed = ?, last_sub_check = CURRENT_TIMESTAMP WHERE user_id = ?", (is_subscribed, user_id))
+            db.commit()
             return is_subscribed
-        return user_data.get('is_subscribed', False)
-    except Exception as e:
-        logger.error(f"Error in check_subscription_cached: {e}")
-        return False
+        return user_data['is_subscribed']
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -1236,23 +1026,15 @@ async def cmd_start(message: Message):
     logger.info(f"Command /start from user {user.id}")
 
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (user_id, username) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING", (user.id, user.username or ""))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            db.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)", (user.id, user.username or ""))
+            db.commit()
 
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute("SELECT is_blocked FROM users WHERE user_id = %s", (user.id,))
-        db_user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-
-        if db_user and db_user.get('is_blocked'):
-            await message.answer("<tg-emoji emoji-id=\"5260293700088511294\">⛔</tg-emoji> <b>Kirish taqiqlangan</b>\n\nSizning akkauntingiz bu botda bloklangan.\nBlokdan chiqarish uchun administratorga murojaat qiling: @s_narzimurodov\n\n<i>Murojaat uchun ID: {user.id}</i>", parse_mode='HTML')
-            return
+        with get_db() as db:
+            db_user = db.execute("SELECT is_blocked FROM users WHERE user_id = ?", (user.id,)).fetchone()
+            if db_user and db_user['is_blocked']:
+                await message.answer("<tg-emoji emoji-id=\"5260293700088511294\">⛔</tg-emoji> <b>Kirish taqiqlangan</b>\n\nSizning akkauntingiz bu botda bloklangan.\nBlokdan chiqarish uchun administratorga murojaat qiling: @s_narzimurodov\n\n<i>Murojaat uchun ID: {user.id}</i>", parse_mode='HTML')
+                return
 
         is_subscribed = await verify_subscription(user.id, force_check=True)
         if not is_subscribed:
@@ -1327,16 +1109,12 @@ async def cmd_done(message: Message, state: FSMContext):
         await state.clear()
         return
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO task_bundles (name) VALUES (%s) RETURNING id", (bundle_name,))
-        bundle_id = cursor.fetchone()['id']
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db() as db:
+            cursor = db.execute("INSERT INTO task_bundles (name) VALUES (?)", (bundle_name,))
+            bundle_id = cursor.lastrowid
             for q in questions:
-                cursor.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (%s, %s, %s, %s, %s)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
-            conn.commit()
+                db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
+            db.commit()
         await message.answer(f"✅ <b>To'plam yaratildi!</b>\n\n📦 Nomi: {bundle_name}\n📝 Savollar soni: {len(questions)}\n\nTo'plam endi Mini App'da mavjud.", parse_mode='HTML')
     except Exception as e:
         await message.answer(f"❌ To'plamni yaratishda xatolik yuz berdi: {str(e)}")
@@ -1451,12 +1229,8 @@ async def admin_announce(callback: CallbackQuery):
     domain = os.getenv('REPLIT_DEV_DOMAIN')
     base_url = f"https://{domain}" if domain else WEBAPP_URL
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=" Vazifalar", style="success", icon_custom_emoji_id="5282843764451195532", web_app=WebAppInfo(url=base_url))]])
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT user_id FROM users")
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        users = db.execute("SELECT user_id FROM users").fetchall()
     count = 0
     for user in users:
         try:
@@ -1474,12 +1248,8 @@ async def admin_stats_callback(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.message.edit_text("Sizda ushbu komandaga ruxsat yo'q.")
         return
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT COUNT(*) as cnt FROM users")
-    total_users = cursor.fetchone()['cnt']
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        total_users = db.execute("SELECT COUNT(*) as cnt FROM users").fetchone()['cnt']
         registered_users = db.execute("SELECT COUNT(*) as cnt FROM users WHERE is_registered = TRUE").fetchone()['cnt']
         total_tasks = db.execute("SELECT COUNT(*) as cnt FROM user_tasks").fetchone()['cnt']
         total_rating = db.execute("SELECT COALESCE(SUM(rating), 0) as total FROM users").fetchone()['total']
@@ -1510,12 +1280,8 @@ async def admin_users_callback(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.message.edit_text("Sizda ushbu komandaga ruxsat yo'q.")
         return
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 10")
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        users = db.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 10").fetchall()
     users_text = "👥 <b>TOP 10 foydalanuvchilar</b>\n\n"
     for i, user in enumerate(users, 1):
         name = f"{user['first_name']} {user['last_name']}" if user['first_name'] else (user['username'] or f"User {user['user_id']}")
@@ -1530,12 +1296,8 @@ async def admin_users_callback(callback: CallbackQuery):
 async def admin_all_users_callback(callback: CallbackQuery):
     await callback.answer()
     users_text = "👥 <b>Barcha foydalanuvchilar</b>\n\n"
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 20")
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        users = db.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users ORDER BY rating DESC LIMIT 20").fetchall()
         for user in users:
             name = f"{user['first_name']} {user['last_name']}" if user['first_name'] else (user['username'] or f"User {user['user_id']}")
             users_text += f"• {name} - {user['rating']} ⭐"
@@ -1551,16 +1313,11 @@ async def admin_bundles_callback(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         await callback.message.edit_text("Sizda ushbu komandaga ruxsat yo'q.")
         return
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT * FROM task_bundles")
-    bundles = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        bundles = db.execute("SELECT * FROM task_bundles").fetchall()
     bundles_text = "📝 <b>Vazifalar to'plamlari</b>\n\n"
     for b in bundles:
-        cursor.execute("SELECT COUNT(*) FROM bundle_questions WHERE bundle_id = %s", (b['id'],))
-        questions_count = cursor.fetchone()[0]
+        questions_count = db.execute("SELECT COUNT(*) FROM bundle_questions WHERE bundle_id = ?", (b['id'],)).fetchone()[0]
         bundles_text += f"• {b['name']} - {questions_count} savol\n"
     bundles_text += f"\n📊 Jami to'plamlar: {len(bundles)}"
     await callback.message.edit_text(bundles_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="➕ To'plam qo'shish", callback_data="admin_add_bundle")], [InlineKeyboardButton(text="📋 Barcha to'plamlar", callback_data="admin_view_bundles")], [InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_back")]]))
@@ -1575,19 +1332,14 @@ async def admin_add_bundle_callback(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "admin_view_bundles")
 async def admin_view_bundles_callback(callback: CallbackQuery):
     await callback.answer()
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT * FROM task_bundles ORDER BY created_at DESC")
-    bundles = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        bundles = db.execute("SELECT * FROM task_bundles ORDER BY created_at DESC").fetchall()
     if not bundles:
         bundles_text = "📋 <b>Barcha to'plamlar</b>\n\nTo'plamlar hozircha yo'q."
     else:
         bundles_text = "📋 <b>Barcha to'plamlar</b>\n\n"
         for b in bundles:
-            cursor.execute("SELECT COUNT(*) FROM bundle_questions WHERE bundle_id = %s", (b['id'],))
-            questions_count = cursor.fetchone()[0]
+            questions_count = db.execute("SELECT COUNT(*) FROM bundle_questions WHERE bundle_id = ?", (b['id'],)).fetchone()[0]
             created_date = b['created_at'][:10] if b['created_at'] else 'nomalum'
             bundles_text += f"📦 {b['name']}\n   └ {questions_count} savol | Yaratilgan: {created_date}\n\n"
     await callback.message.edit_text(bundles_text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_bundles")]]))
@@ -1600,14 +1352,11 @@ async def admin_reset_season_callback(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_reset_confirm")
 async def admin_reset_confirm_callback(callback: CallbackQuery):
     await callback.answer()
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET rating = 0")
-    cursor.execute("DELETE FROM user_tasks")
-    cursor.execute("UPDATE system_settings SET value = %s WHERE key = 'season_start'", (datetime.now().isoformat(),))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        db.execute("UPDATE users SET rating = 0")
+        db.execute("DELETE FROM user_tasks")
+        db.execute("UPDATE system_settings SET value = ? WHERE key = 'season_start'", (datetime.now().isoformat(),))
+        db.commit()
     await callback.message.edit_text("✅ Mavsum muvaffaqiyatli qayta boshlash!\n\nBarcha reytinglar va vazifalar tarixi tozalandi.")
 
 @router.callback_query(F.data == "admin_close")
@@ -1618,12 +1367,8 @@ async def admin_close_callback(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_block_user")
 async def admin_block_user_callback(callback: CallbackQuery):
     await callback.answer()
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT user_id, username, first_name, last_name, is_blocked FROM users ORDER BY rating DESC LIMIT 15")
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        users = db.execute("SELECT user_id, username, first_name, last_name, is_blocked FROM users ORDER BY rating DESC LIMIT 15").fetchall()
     users_text = "🔒 <b>Foydalanuvchilarni bloklash</b>\n\nBloklash/ochish uchun foydalanuvchini tanlang:\n\n"
     keyboard = []
     for user in users:
@@ -1640,12 +1385,8 @@ async def admin_block_user_callback(callback: CallbackQuery):
 async def admin_block_specific_callback(callback: CallbackQuery):
     await callback.answer()
     user_id = int(callback.data.split("_")[-1])
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = %s", (user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        db.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = ?", (user_id,))
         db.commit()
     await callback.message.edit_text(f"✅ Пользователь {user_id} заблокирован.")
 
@@ -1653,12 +1394,8 @@ async def admin_block_specific_callback(callback: CallbackQuery):
 async def admin_unblock_specific_callback(callback: CallbackQuery):
     await callback.answer()
     user_id = int(callback.data.split("_")[-1])
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = %s", (user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        db.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = ?", (user_id,))
         db.commit()
     await callback.message.edit_text(f"✅ Пользователь {user_id} разблокирован.")
 
@@ -1698,12 +1435,8 @@ async def admin_unblock_ask_callback(callback: CallbackQuery, state: FSMContext)
 async def admin_broadcast_text(message: Message, state: FSMContext):
     broadcast_text = message.text
     await state.clear()
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT user_id FROM users")
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        users = db.execute("SELECT user_id FROM users").fetchall()
     count = 0
     for user in users:
         try:
@@ -1736,16 +1469,12 @@ async def admin_bundle_question(message: Message, state: FSMContext):
             await state.clear()
             return
         try:
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO task_bundles (name) VALUES (%s) RETURNING id", (bundle_name,))
-            bundle_id = cursor.fetchone()['id']
-            conn.commit()
-            cursor.close()
-            conn.close()
+            with get_db() as db:
+                cursor = db.execute("INSERT INTO task_bundles (name) VALUES (?)", (bundle_name,))
+                bundle_id = cursor.lastrowid
                 for q in questions:
-                    cursor.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (%s, %s, %s, %s, %s)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
-                conn.commit()
+                    db.execute("INSERT INTO bundle_questions (bundle_id, question, options, correct_option, rating) VALUES (?, ?, ?, ?, ?)", (bundle_id, q['question'], q['options'], q['correct_option'], q['rating']))
+                db.commit()
             await message.answer(f"✅ <b>Сборка создана!</b>\n\n📦 Название: {bundle_name}\n📝 Вопросов: {len(questions)}\n\nСборка теперь доступна в Mini App.", parse_mode='HTML')
         except Exception as e:
             await message.answer(f"❌ To'plamni yaratishda xatolik yuz berdi: {str(e)}")
@@ -1781,24 +1510,16 @@ async def admin_block_user_id(message: Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ Неверный формат ID. Введите числовой Telegram ID.")
         return
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT * FROM users WHERE user_id = %s", (target_user_id,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if not user:
-        await message.answer(f"❌ Пользователь с ID {target_user_id} не найден в базе данных.")
-        return
-    if user['is_blocked']:
-        await message.answer(f"ℹ️ Пользователь с ID {target_user_id} уже заблокирован.")
-        return
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = %s", (target_user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        user = db.execute("SELECT * FROM users WHERE user_id = ?", (target_user_id,)).fetchone()
+        if not user:
+            await message.answer(f"❌ Пользователь с ID {target_user_id} не найден в базе данных.")
+            return
+        if user['is_blocked']:
+            await message.answer(f"ℹ️ Пользователь с ID {target_user_id} уже заблокирован.")
+            return
+        db.execute("UPDATE users SET is_blocked = TRUE WHERE user_id = ?", (target_user_id,))
+        db.commit()
     await message.answer(f"✅ Пользователь с ID {target_user_id} заблокирован.\n\nОн не сможет использовать бота и Mini App.")
 
 @router.message(AdminState.waiting_unblock_user_id)
@@ -1810,24 +1531,16 @@ async def admin_unblock_user_id(message: Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ Неверный формат ID. Введите числовой Telegram ID.")
         return
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cursor.execute("SELECT * FROM users WHERE user_id = %s", (target_user_id,))
-    user = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if not user:
-        await message.answer(f"❌ Пользователь с ID {target_user_id} не найден в базе данных.")
-        return
-    if not user['is_blocked']:
-        await message.answer(f"ℹ️ Пользователь с ID {target_user_id} не заблокирован.")
-        return
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = %s", (target_user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with get_db() as db:
+        user = db.execute("SELECT * FROM users WHERE user_id = ?",     (target_user_id,)).fetchone()
+        if not user:
+            await message.answer(f"❌ Пользователь с ID {target_user_id} не найден в базе данных.")
+            return
+        if not user['is_blocked']:
+            await message.answer(f"ℹ️ Пользователь с ID {target_user_id} не заблокирован.")
+            return
+        db.execute("UPDATE users SET is_blocked = FALSE WHERE user_id = ?", (target_user_id,))
+        db.commit()
     await message.answer(f"✅ Пользователь с ID {target_user_id} разблокирован.\n\nОн снова может использовать бота и Mini App.")
 
 dp.include_router(router)
