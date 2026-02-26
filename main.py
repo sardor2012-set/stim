@@ -4,6 +4,7 @@ import sqlite3
 import os
 import json
 import time
+import shutil
 from collections import defaultdict
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, Router, F
@@ -26,14 +27,25 @@ WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_ID = 7592032451
 
+# ==================== ПУТЬ К БАЗЕ ДАННЫХ ====================
+# Определяем путь к директории данных
+DATA_DIR = '/opt/render/project/src/data'
+if not os.path.exists(DATA_DIR):
+    # Для локальной разработки используем текущую директорию
+    DATA_DIR = '.'
+
+DB_PATH = os.path.join(DATA_DIR, 'bot.db')
+BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
+
+# Создаем директории если их нет
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
 # ==================== ANTI-SPAM & ANTI-DDOS CONFIG ====================
-# Anti-spam settings for Telegram bot
 SPAM_LIMIT = 5  # Max messages per time window
 SPAM_TIME_WINDOW = 3  # Time window in seconds
 SPAM_BLOCK_DURATION = 300  # Block duration in seconds (5 minutes)
 AUTO_BLOCK_THRESHOLD = 3  # Number of violations before auto-block
-
-# Anti-DDoS settings for Flask
 FLASK_RATE_LIMIT = 100  # Max requests per time window
 FLASK_RATE_WINDOW = 60  # Time window in seconds
 FLASK_DDOS_BLOCK_DURATION = 300  # Block duration in seconds
@@ -45,6 +57,239 @@ ip_request_timestamps = defaultdict(list)
 blocked_users = {}  # Dict of blocked user IDs with block timestamp
 blocked_ips = {}  # Dict of blocked IPs with block timestamp
 
+_active_channels_cache, _cache_timestamp, CACHE_DURATION = None, None, 60
+
+# ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С БАЗОЙ ДАННЫХ ====================
+def init_database():
+    """
+    Инициализирует базу данных.
+    Если базы нет, создает новую.
+    Если есть старая база в корне, копирует её.
+    """
+    global DB_PATH
+    
+    # Проверяем, есть ли старая база в корне проекта
+    old_db_path = 'bot.db'
+    if os.path.exists(old_db_path) and not os.path.exists(DB_PATH):
+        try:
+            shutil.copy2(old_db_path, DB_PATH)
+            print(f"✅ База данных скопирована из {old_db_path} в {DB_PATH}")
+        except Exception as e:
+            print(f"❌ Ошибка при копировании базы данных: {e}")
+    
+    # Создаем резервную копию при запуске
+    create_database_backup()
+
+def create_database_backup():
+    """
+    Создает резервную копию базы данных.
+    """
+    if os.path.exists(DB_PATH):
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = os.path.join(BACKUP_DIR, f'bot_backup_{timestamp}.db')
+            shutil.copy2(DB_PATH, backup_path)
+            
+            # Удаляем старые бэкапы (оставляем только 5 последних)
+            backups = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith('bot_backup_')])
+            while len(backups) > 5:
+                os.remove(os.path.join(BACKUP_DIR, backups.pop(0)))
+            
+            print(f"✅ Резервная копия создана: {backup_path}")
+        except Exception as e:
+            print(f"❌ Ошибка при создании резервной копии: {e}")
+
+def get_db():
+    """
+    Возвращает соединение с базой данных.
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=60)
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.row_factory = sqlite3.Row
+        return conn
+    except Exception as e:
+        print(f"❌ Ошибка при подключении к БД: {e}")
+        # Пробуем восстановить из последнего бэкапа
+        restore_from_backup()
+        conn = sqlite3.connect(DB_PATH, timeout=60)
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def restore_from_backup():
+    """
+    Восстанавливает базу данных из последнего бэкапа.
+    """
+    try:
+        backups = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith('bot_backup_')])
+        if backups:
+            latest_backup = os.path.join(BACKUP_DIR, backups[-1])
+            shutil.copy2(latest_backup, DB_PATH)
+            print(f"✅ База данных восстановлена из {latest_backup}")
+        else:
+            print("❌ Нет доступных бэкапов для восстановления")
+    except Exception as e:
+        print(f"❌ Ошибка при восстановлении из бэкапа: {e}")
+
+def backup_database_periodically():
+    """
+    Фоновая задача для периодического создания бэкапов.
+    """
+    while True:
+        time.sleep(300)  # 5 минут
+        try:
+            create_database_backup()
+        except Exception as e:
+            print(f"❌ Ошибка в периодическом бэкапе: {e}")
+
+# ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С КАНАЛАМИ ====================
+def get_all_active_channels(force_refresh=False):
+    global _active_channels_cache, _cache_timestamp
+    current_time = datetime.now()
+    if force_refresh or _active_channels_cache is None or _cache_timestamp is None or (current_time - _cache_timestamp).total_seconds() > CACHE_DURATION:
+        channels = dict(REQUIRED_CHANNELS)
+        try:
+            with get_db() as db:
+                if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sponsors'").fetchone():
+                    for sponsor in db.execute("SELECT channel_name, channel_id FROM sponsors WHERE is_active = TRUE").fetchall():
+                        channels[sponsor['channel_name']] = sponsor['channel_id']
+        except Exception as e:
+            logger.error(f"Error fetching sponsors: {e}")
+        _active_channels_cache, _cache_timestamp = channels, current_time
+    return _active_channels_cache
+
+# ==================== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ====================
+def init_db():
+    """
+    Инициализирует структуру базы данных.
+    """
+    with get_db() as db:
+        # Таблица пользователей
+        db.execute('''CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY, 
+            username TEXT, 
+            is_subscribed BOOLEAN DEFAULT FALSE, 
+            last_sub_check DATETIME DEFAULT CURRENT_TIMESTAMP, 
+            first_name TEXT, 
+            last_name TEXT, 
+            class_name TEXT, 
+            is_registered BOOLEAN DEFAULT FALSE, 
+            rating INTEGER DEFAULT 0, 
+            photo_url TEXT, 
+            is_blocked BOOLEAN DEFAULT FALSE, 
+            server_nick TEXT
+        )''')
+        
+        # Таблица выполненных заданий
+        db.execute('''CREATE TABLE IF NOT EXISTS user_tasks (
+            user_id INTEGER, 
+            task_id INTEGER, 
+            is_correct BOOLEAN, 
+            earned_rating INTEGER, 
+            completed_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+            answers TEXT, 
+            correct_count INTEGER DEFAULT 0, 
+            incorrect_count INTEGER DEFAULT 0, 
+            started_at DATETIME, 
+            PRIMARY KEY (user_id, task_id)
+        )''')
+        
+        # Таблица спонсоров
+        db.execute('''CREATE TABLE IF NOT EXISTS sponsors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            channel_name TEXT NOT NULL, 
+            channel_id TEXT NOT NULL, 
+            is_active BOOLEAN DEFAULT TRUE
+        )''')
+        
+        # Таблица промокодов
+        db.execute('''CREATE TABLE IF NOT EXISTS promos (
+            code TEXT PRIMARY KEY, 
+            discount_percent INTEGER, 
+            category TEXT, 
+            is_one_time BOOLEAN
+        )''')
+        
+        # Таблица отзывов
+        db.execute('''CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            user_id INTEGER, 
+            username TEXT, 
+            stars INTEGER, 
+            text TEXT, 
+            review_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Таблица покупок
+        db.execute('''CREATE TABLE IF NOT EXISTS purchases (
+            purchase_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            user_id INTEGER, 
+            item_id INTEGER, 
+            item_name TEXT, 
+            price INTEGER, 
+            status TEXT DEFAULT 'pending', 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+            server_nick TEXT
+        )''')
+        
+        # Таблица наборов заданий
+        db.execute('''CREATE TABLE IF NOT EXISTS task_bundles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            name TEXT NOT NULL, 
+            league_id TEXT DEFAULT 'all', 
+            time_limit INTEGER DEFAULT 0, 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Таблица вопросов для наборов
+        db.execute('''CREATE TABLE IF NOT EXISTS bundle_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            bundle_id INTEGER NOT NULL, 
+            question TEXT NOT NULL, 
+            options TEXT NOT NULL, 
+            correct_option INTEGER NOT NULL DEFAULT 0, 
+            rating INTEGER DEFAULT 5, 
+            FOREIGN KEY (bundle_id) REFERENCES task_bundles(id) ON DELETE CASCADE
+        )''')
+        
+        # Таблица системных настроек
+        db.execute('''CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY, 
+            value TEXT
+        )''')
+        
+        # Таблица предметов
+        db.execute('''CREATE TABLE IF NOT EXISTS items (
+            item_id INTEGER PRIMARY KEY, 
+            name TEXT, 
+            price INTEGER, 
+            category TEXT, 
+            description TEXT, 
+            options TEXT, 
+            correct_option INTEGER
+        )''')
+
+        # Добавляем начальные предметы
+        items_data = [
+            (1, 'Что означает этот знак + ?', 10, 'all', 'Математическая задача', 'знак принадлежности|пересечение|объединение|пустое множество', 2),
+            (2, 'Сколько будет 2 + 2 * 2?', 5, 'all', 'Математика', '4|6|8|0', 1),
+            (3, 'Столица Франции?', 5, 'all', 'География', 'Берлин|Лондон|пАРИЖ|Рим', 2),
+            (4, 'Самая большая планета?', 5, 'all', 'Астрономия', 'Марс|Земля|Юпитер Сатурн', 2),
+            (5, 'Химический символ золота?', 5, 'all', 'Химия', 'Ag|Au|Fe|Cu', 1)
+        ]
+        for item in items_data:
+            db.execute("INSERT OR REPLACE INTO items (item_id, name, price, category, description, options, correct_option) VALUES (?, ?, ?, ?, ?, ?, ?)", item)
+
+        # Добавляем начальную настройку сезона если её нет
+        if not db.execute("SELECT value FROM system_settings WHERE key = 'season_start'").fetchone():
+            db.execute("INSERT INTO system_settings (key, value) VALUES ('season_start', ?)", (datetime.now().isoformat(),))
+
+        db.commit()
+    
+    print(f"✅ База данных инициализирована по пути: {DB_PATH}")
 
 # ==================== ANTI-SPAM MIDDLEWARE ====================
 class AntiSpamMiddleware(BaseMiddleware):
@@ -151,21 +396,6 @@ class AntiSpamMiddleware(BaseMiddleware):
         # This allows automatic unblock after the duration expires
         logger.info(f"User {user_id} has been temporarily blocked for spam (in-memory)")
 
-
-# Function to unblock user after block duration
-async def check_and_unblock_users():
-    """Background task to check and unblock users when block duration expires."""
-    while True:
-        try:
-            current_time = time.time()
-            # This would require storing block times - simplified version
-            # In production, you'd store block timestamps in a dict
-            await asyncio.sleep(60)
-        except Exception as e:
-            logger.error(f"Error in unblock check: {e}")
-            await asyncio.sleep(60)
-
-
 # ==================== FLASK RATE LIMITING ====================
 def rate_limit_ip(limit: int = FLASK_RATE_LIMIT, window: int = FLASK_RATE_WINDOW):
     """
@@ -217,68 +447,10 @@ def rate_limit_ip(limit: int = FLASK_RATE_LIMIT, window: int = FLASK_RATE_WINDOW
         return decorated_function
     return decorator
 
-
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-_active_channels_cache, _cache_timestamp, CACHE_DURATION = None, None, 60
-
-def get_db():
-    conn = sqlite3.connect('bot.db', timeout=60)
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA synchronous=NORMAL')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_all_active_channels(force_refresh=False):
-    global _active_channels_cache, _cache_timestamp
-    current_time = datetime.now()
-    if force_refresh or _active_channels_cache is None or _cache_timestamp is None or (current_time - _cache_timestamp).total_seconds() > CACHE_DURATION:
-        channels = dict(REQUIRED_CHANNELS)
-        try:
-            with get_db() as db:
-                if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sponsors'").fetchone():
-                    for sponsor in db.execute("SELECT channel_name, channel_id FROM sponsors WHERE is_active = TRUE").fetchall():
-                        channels[sponsor['channel_name']] = sponsor['channel_id']
-        except Exception as e:
-            logger.error(f"Error fetching sponsors: {e}")
-        _active_channels_cache, _cache_timestamp = channels, current_time
-    return _active_channels_cache
-
-def init_db():
-    with get_db() as db:
-        db.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, is_subscribed BOOLEAN DEFAULT FALSE, last_sub_check DATETIME DEFAULT CURRENT_TIMESTAMP, first_name TEXT, last_name TEXT, class_name TEXT, is_registered BOOLEAN DEFAULT FALSE, rating INTEGER DEFAULT 0, photo_url TEXT, is_blocked BOOLEAN DEFAULT FALSE, server_nick TEXT)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS user_tasks (user_id INTEGER, task_id INTEGER, is_correct BOOLEAN, earned_rating INTEGER, completed_at DATETIME DEFAULT CURRENT_TIMESTAMP, answers TEXT, correct_count INTEGER DEFAULT 0, incorrect_count INTEGER DEFAULT 0, started_at DATETIME, PRIMARY KEY (user_id, task_id))''')
-        db.execute('''CREATE TABLE IF NOT EXISTS sponsors (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_name TEXT NOT NULL, channel_id TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, discount_percent INTEGER, category TEXT, is_one_time BOOLEAN)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, username TEXT, stars INTEGER, text TEXT, review_time DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS purchases (purchase_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, item_id INTEGER, item_name TEXT, price INTEGER, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, server_nick TEXT)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS task_bundles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, league_id TEXT DEFAULT 'all', time_limit INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS bundle_questions (id INTEGER PRIMARY KEY AUTOINCREMENT, bundle_id INTEGER NOT NULL, question TEXT NOT NULL, options TEXT NOT NULL, correct_option INTEGER NOT NULL DEFAULT 0, rating INTEGER DEFAULT 5, FOREIGN KEY (bundle_id) REFERENCES task_bundles(id) ON DELETE CASCADE)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS items (item_id INTEGER PRIMARY KEY, name TEXT, price INTEGER, category TEXT, description TEXT, options TEXT, correct_option INTEGER)''')
-
-        for col in db.execute("PRAGMA table_info(users)").fetchall():
-            col_name = col[1]
-            if col_name == 'photo_url' and not db.execute("SELECT photo_url FROM users WHERE user_id = -1").fetchone():
-                pass
-
-        items_data = [
-            (1, 'Что означает этот знак + ?', 10, 'all', 'Математическая задача', 'знак принадлежности|пересечение|объединение|пустое множество', 2),
-            (2, 'Сколько будет 2 + 2 * 2?', 5, 'all', 'Математика', '4|6|8|0', 1),
-            (3, 'Столица Франции?', 5, 'all', 'География', 'Берлин|Лондон|пАРИЖ|Рим', 2),
-            (4, 'Самая большая планета?', 5, 'all', 'Астрономия', 'Марс|Земля|Юпитер Сатурн', 2),
-            (5, 'Химический символ золота?', 5, 'all', 'Химия', 'Ag|Au|Fe|Cu', 1)
-        ]
-        for item in items_data:
-            db.execute("INSERT OR REPLACE INTO items (item_id, name, price, category, description, options, correct_option) VALUES (?, ?, ?, ?, ?, ?, ?)", item)
-
-        if not db.execute("SELECT value FROM system_settings WHERE key = 'season_start'").fetchone():
-            db.execute("INSERT INTO system_settings (key, value) VALUES ('season_start', ?)", (datetime.now().isoformat(),))
-
-        db.commit()
-
+# ==================== FLASK APP ====================
 app = Flask(__name__)
 CORS(app)
 
@@ -807,7 +979,7 @@ def create_promo():
             db.execute("INSERT INTO promos (code, discount_percent, category, is_one_time) VALUES (?, ?, ?, ?)", (data['code'], data['discount'], data['category'], data['is_one_time']))
             db.commit()
         return jsonify({"success": True})
-    except:
+    except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/admin/promo/delete/<code>', methods=['POST'])
@@ -819,7 +991,7 @@ def delete_promo(code):
             db.execute("DELETE FROM promos WHERE code = ?", (code,))
             db.commit()
         return jsonify({"success": True})
-    except:
+    except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/admin/promo/stats/<code>')
@@ -929,7 +1101,7 @@ def reset_season():
 def run_flask():
     app.run(host='0.0.0.0', port=5000)
 
-# Telegram Bot
+# ==================== TELEGRAM BOT ====================
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
@@ -952,15 +1124,15 @@ def main_menu_keyboard(user_id=None, name=None, photo_url=None):
     domain = os.getenv('REPLIT_DEV_DOMAIN')
     base_url = f"https://{domain}" if domain else WEBAPP_URL
     keyboard = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text=" Vazifalar", style="success", icon_custom_emoji_id="5282843764451195532", web_app=WebAppInfo(url=f"{base_url}/?user_id={user_id}&name={quote(str(name or ''))}&photo={quote(str(photo_url or ''))}&v={int(time.time())}"))],
-        [KeyboardButton(text=" Bot haqida", style="primary", icon_custom_emoji_id="5334544901428229844"), KeyboardButton(text=" Yuqori reytinglar", style="primary", icon_custom_emoji_id="5462927083132970373")],
-        [KeyboardButton(text=" Yordam", style="danger", icon_custom_emoji_id="5238025132177369293")]
+        [KeyboardButton(text=" Vazifalar", web_app=WebAppInfo(url=f"{base_url}/?user_id={user_id}&name={quote(str(name or ''))}&photo={quote(str(photo_url or ''))}&v={int(time.time())}"))],
+        [KeyboardButton(text=" Bot haqida"), KeyboardButton(text=" Yuqori reytinglar")],
+        [KeyboardButton(text=" Yordam")]
     ], resize_keyboard=True, one_time_keyboard=False)
     return keyboard
 
 def main_menu_keyboard_no_webapp():
     keyboard = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text=" Menu", style="primary", icon_custom_emoji_id="5363840027245696377")]
+        [KeyboardButton(text=" Menu")]
     ], resize_keyboard=True, one_time_keyboard=False)
     return keyboard
 
@@ -968,11 +1140,11 @@ def channels_keyboard():
     keyboard = []
     channels = list(get_all_active_channels().items())
     for i in range(0, len(channels), 2):
-        row = [InlineKeyboardButton(text=channels[i][0], url=f"https://t.me/{channels[i][1][1:]}", style="primary", icon_custom_emoji_id="5224316404022415384")]
+        row = [InlineKeyboardButton(text=channels[i][0], url=f"https://t.me/{channels[i][1][1:]}")]
         if i + 1 < len(channels):
-            row.append(InlineKeyboardButton(text=channels[i + 1][0], url=f"https://t.me/{channels[i + 1][1][1:]}", style="primary", icon_custom_emoji_id="5256235510044594825"))
+            row.append(InlineKeyboardButton(text=channels[i + 1][0], url=f"https://t.me/{channels[i + 1][1][1:]}"))
         keyboard.append(row)
-    keyboard.append([InlineKeyboardButton(text="Obuna bo'ldim", callback_data="check_subscription", style="success", icon_custom_emoji_id="5850654130497916523")])
+    keyboard.append([InlineKeyboardButton(text="Obuna bo'ldim", callback_data="check_subscription")])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 async def get_profile_photo(user_id):
@@ -1086,12 +1258,12 @@ async def cmd_db(message: Message):
     if message.from_user.id != ADMIN_ID:
         await message.answer("Sizda ushbu komandaga ruxsat yo'q.")
         return
-    if not os.path.exists('bot.db'):
+    if not os.path.exists(DB_PATH):
         await message.answer("❌ Bazaviy fayl topilmadi.")
         return
     try:
         await message.answer("📦 Bazaviy fayl jo'natilmoqda...")
-        await message.answer_document(document=FSInputFile('bot.db', filename='bot.db'))
+        await message.answer_document(document=FSInputFile(DB_PATH, filename='bot.db'))
     except Exception as e:
         logger.error(f"Error sending database file: {e}")
         await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
@@ -1135,12 +1307,9 @@ async def menu_top_ratings(message: Message):
 
         for attempt in range(max_retries):
             try:
-                conn = get_db()
-                try:
-                    top_users = conn.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users WHERE rating > 0 ORDER BY rating DESC LIMIT 50").fetchall()
+                with get_db() as db:
+                    top_users = db.execute("SELECT user_id, username, first_name, last_name, rating, class_name FROM users WHERE rating > 0 ORDER BY rating DESC LIMIT 50").fetchall()
                     top_users = list(top_users)
-                finally:
-                    conn.close()
                 break
             except Exception as db_error:
                 if attempt < max_retries - 1:
@@ -1228,7 +1397,7 @@ async def admin_announce(callback: CallbackQuery):
     text = "<tg-emoji emoji-id=\"5298609030321691620\">📣</tg-emoji> <b>Yangi vazifalar sizni kutmoqda!</b>\n\n<tg-emoji emoji-id=\"5224607267797606837\">⚡️</tg-emoji> Reytingingizni oshirish uchun vazifalarni bajaring!"
     domain = os.getenv('REPLIT_DEV_DOMAIN')
     base_url = f"https://{domain}" if domain else WEBAPP_URL
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=" Vazifalar", style="success", icon_custom_emoji_id="5282843764451195532", web_app=WebAppInfo(url=base_url))]])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=" Vazifalar", web_app=WebAppInfo(url=base_url))]])
     with get_db() as db:
         users = db.execute("SELECT user_id FROM users").fetchall()
     count = 0
@@ -1532,7 +1701,7 @@ async def admin_unblock_user_id(message: Message, state: FSMContext):
         await message.answer("❌ Неверный формат ID. Введите числовой Telegram ID.")
         return
     with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE user_id = ?",     (target_user_id,)).fetchone()
+        user = db.execute("SELECT * FROM users WHERE user_id = ?", (target_user_id,)).fetchone()
         if not user:
             await message.answer(f"❌ Пользователь с ID {target_user_id} не найден в базе данных.")
             return
@@ -1544,7 +1713,6 @@ async def admin_unblock_user_id(message: Message, state: FSMContext):
     await message.answer(f"✅ Пользователь с ID {target_user_id} разблокирован.\n\nОн снова может использовать бота и Mini App.")
 
 dp.include_router(router)
-
 
 # Function to clean up old rate limiting data
 def cleanup_rate_limit_data():
@@ -1578,21 +1746,32 @@ def cleanup_rate_limit_data():
 
         time.sleep(60)  # Run every minute
 
-
 async def main():
+    # Инициализируем базу данных
+    init_database()
     init_db()
+    
+    # Создаем бэкап при запуске
+    create_database_backup()
 
-    # Start cleanup thread
+    # Запускаем фоновые задачи
     cleanup_thread = threading.Thread(target=cleanup_rate_limit_data, daemon=True)
     cleanup_thread.start()
+    
+    backup_thread = threading.Thread(target=backup_database_periodically, daemon=True)
+    backup_thread.start()
 
     threading.Thread(target=run_flask, daemon=True).start()
     logger.info("Бот запущен (aiogram 3) с анти-спам и анти-DDoS защитой")
+    logger.info(f"База данных находится по пути: {DB_PATH}")
+    
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot, allowed_updates=['message', 'callback_query'])
     except (KeyboardInterrupt, SystemExit):
         logger.info("Бот остановлен")
+        # Создаем финальный бэкап при остановке
+        create_database_backup()
 
 if __name__ == "__main__":
     asyncio.run(main())
