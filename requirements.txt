@@ -1,4 +1,6 @@
-aiogram
-flask
-flask-cors
-gunicorn
+aiogram==3.4.1
+flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+requests==2.31.0
+psycopg2-binary==2.9.9  # если будете использовать PostgreSQL
