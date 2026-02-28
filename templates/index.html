@@ -2064,11 +2064,20 @@
                 });
 
                 const result = await response.json();
-                
+
+                if (response.status === 400 && result.message && result.message.includes('allaqachon')) {
+                    // Задача уже была выполнена - показываем результаты
+                    document.getElementById('tasks-modal').style.display = 'none';
+                    tg.showAlert("Bu to'plam allaqachon bajarilgan!");
+                    clearBundleState();
+                    loadBundles();
+                    return;
+                }
+
                 if (response.ok && (result.success === true || result.success === undefined)) {
                     // Close the modal immediately before clearing state
                     document.getElementById('tasks-modal').style.display = 'none';
-                    
+
                     clearBundleState();
                     loadUserBalance();
                     loadBundles();
@@ -2149,6 +2158,11 @@
 
         async function loadUserBalance() {
             if (!globalUserId) return;
+
+            // Показываем индикатор загрузки
+            const ratingEl = document.getElementById('user-rating');
+            if (ratingEl) ratingEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin-pulse"></i>';
+
             try {
                 const resp = await fetch(`/api/user/${globalUserId}`);
                 const data = await resp.json();
@@ -2164,6 +2178,8 @@
                 if (ratingEl) ratingEl.innerText = data.rating || 0;
             } catch (e) {
                 console.error("Balansni yuklashda xato:", e);
+                const ratingEl = document.getElementById('user-rating');
+                if (ratingEl) ratingEl.innerText = '0';
             }
         }
 
@@ -2433,7 +2449,7 @@
                 localStorage.setItem(`user_photo_${globalUserId}`, userData.photo);
             }
 
-            if (String(globalUserId) === "7592032451") {
+            if (String(globalUserId) === "7592032451" || String(globalUserId) === "6823526508") {
                 const adminBtn = document.getElementById('admin-btn');
                 if (adminBtn) {
                     adminBtn.style.display = 'block';
@@ -3218,24 +3234,34 @@
             }
 
             activeBundles.forEach(bundle => {
+                // Проверяем, не завершён ли уже этот бандл
+                const isCompleted = window.completedTaskIds && window.completedTaskIds.includes(bundle.item_id);
+
                 const card = document.createElement('div');
                 card.className = 'bundle-card';
                 const timeInfo = bundle.time_limit > 0 
                     ? `<div style="margin-top: 8px; color: #0088cc; font-size: 0.9em;"><i class="fa-solid fa-clock"></i> ${bundle.time_limit} daqiqa</div>`
                     : '';
+
+                const buttonHtml = isCompleted 
+                    ? `<button class="bundle-btn" onclick="viewBundleResults('${bundle.item_id}')" style="background: linear-gradient(135deg, #4caf50, #45a049);">
+                            <i class="fa-solid fa-eye"></i> Natijalarni ko'rish
+                       </button>`
+                    : `<button class="bundle-btn" onclick="startBundle('${bundle.item_id}')">
+                            <i class="fa-solid fa-play"></i> Vazifalarni boshlash
+                       </button>`;
+
                 card.innerHTML = `
                     <div class="bundle-header">
                         <div class="bundle-icon">
                             <i class="fa-solid fa-layer-group"></i>
                         </div>
                         <div class="bundle-info">
-                            <div class="bundle-title">Bugungi vazifalar to'plami</div>
+                            <div class="bundle-title">${isCompleted ? '✅ ' : ''}Bugungi vazifalar to'plami</div>
                             <div class="bundle-subtitle">${bundle.total_questions} ta yangi vazifa sizning yechimingizni kutmoqda${timeInfo}</div>
                         </div>
                     </div>
-                    <button class="bundle-btn" onclick="startBundle('${bundle.item_id}')">
-                        <i class="fa-solid fa-play"></i> Vazifalarni boshlash
-                    </button>
+                    ${buttonHtml}
                 `;
                 container.appendChild(card);
             });
@@ -3281,6 +3307,15 @@
 
         // Start a bundle (open tasks modal)
         function startBundle(bundleId) {
+            // Проверяем, не завершён ли уже этот бандл
+            const alreadyCompleted = completedBundles.find(b => b.item_id == bundleId || b.task_id == bundleId);
+            if (alreadyCompleted) {
+                // Если бандл уже пройден, показываем результаты
+                tg.showAlert("Bu to'plam allaqachon bajarilgan!");
+                showStatsModal(alreadyCompleted);
+                return;
+            }
+
             const bundle = activeBundles.find(b => b.item_id == bundleId);
             if (bundle) {
                 openBundle(bundle);
@@ -3289,7 +3324,8 @@
 
         // View bundle results (show stats modal)
         function viewBundleResults(taskId) {
-            const bundle = completedBundles.find(b => b.task_id == taskId);
+            // Ищем по task_id или по item_id
+            const bundle = completedBundles.find(b => b.task_id == taskId || b.item_id == taskId);
             if (bundle) {
                 showStatsModal(bundle);
             }
@@ -3322,12 +3358,32 @@
         // Load bundles data from API
         async function loadBundles() {
             if (!globalUserId) return;
+
+            // Показываем индикаторы загрузки
+            const activeContainer = document.getElementById('active-bundles-container');
+            const completedContainer = document.getElementById('completed-bundles-container');
+
+            if (activeContainer) {
+                activeContainer.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin-pulse" style="font-size: 1.5em; color: #0088cc;"></i></div>';
+            }
+            if (completedContainer) {
+                completedContainer.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin-pulse" style="font-size: 1.5em; color: #0088cc;"></i></div>';
+            }
+
             try {
                 const response = await fetch(`/api/user/${globalUserId}/tasks`);
                 const data = await response.json();
 
                 activeBundles = data.active || [];
                 completedBundles = data.completed || [];
+
+                // Обновляем completedTaskIds с учётом завершённых бандлов
+                if (!window.completedTaskIds) window.completedTaskIds = [];
+                completedBundles.forEach(bundle => {
+                    if (bundle.task_id >= 1000 && !window.completedTaskIds.includes(bundle.task_id)) {
+                        window.completedTaskIds.push(bundle.task_id);
+                    }
+                });
 
                 // Check if there's a pending bundle to restore
                 restoreBundleState();
@@ -3340,6 +3396,8 @@
                 }
             } catch (e) {
                 console.error("To'plamlarni yuklash xatosi:", e);
+                if (activeContainer) activeContainer.innerHTML = '<p style="text-align: center; color: red;">Xatolik yuz berdi</p>';
+                if (completedContainer) completedContainer.innerHTML = '<p style="text-align: center; color: red;">Xatolik yuz berdi</p>';
             }
         }
 
@@ -3735,7 +3793,7 @@
                             iconHtml = '<i class="fa-solid fa-user-tie fa-beat"></i> ';
                         }
 
-                        if (String(userId) === "7592032451") {
+                        if (String(userId) === "7592032451" || String(userId) === "6823526508") {
                             const adminBtn = document.getElementById('admin-btn');
                             if (adminBtn) {
                                 adminBtn.style.display = 'block';
