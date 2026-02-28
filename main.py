@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
-WEBAPP_URL = "https://2b2d3548-fc91-474c-929d-75e347bffe63-00-34oulo4kv2v7i.pike.replit.dev/"
+WEBAPP_URL = "https://stim-p9gv.onrender.com/"
 WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_IDS = [7592032451, 6823526508]
