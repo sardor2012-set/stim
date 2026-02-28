@@ -720,7 +720,7 @@ async def cmd_start(message: Message):
                     return
 
         # Сначала отправляем сообщение о проверке подписки
-        checking_msg = await message.answer("<tg-emoji emoji-id=\"5370935802844946281\">🔄</tg-emoji> Obunal tekshirilmoqda...", parse_mode='HTML')
+        checking_msg = await message.answer("<tg-emoji emoji-id=\"5370935802844946281\">🔄</tg-emoji> Obunalar tekshirilmoqda...", parse_mode='HTML')
 
         # Запускаем асинхронную проверку подписки без блокировки
         asyncio.create_task(check_and_notify_subscription(user.id, message, checking_msg))
