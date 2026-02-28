@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
 WEBAPP_URL = "https://2b2d3548-fc91-474c-929d-75e347bffe63-00-34oulo4kv2v7i.pike.replit.dev/"
-WELCOME_IMAGE_URL = "https://ibb.co/CsVxsv24"
+WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {" Stimora Lab": "@stimora_lab", " STIM quiz": "@stim_quiz"}
 ADMIN_IDS = [7592032451, 6823526508]
 ADMIN_ID = 7592032451
@@ -719,21 +719,11 @@ async def cmd_start(message: Message):
                     await message.answer("<tg-emoji emoji-id=\"5260293700088511294\">⛔</tg-emoji> <b>Kirish taqiqlangan</b>\n\nSizning akkauntingiz bu botda bloklangan.\nBlokdan chiqarish uchun administratorga murojaat qiling:\n\n<i>Murojaat uchun ID: {user.id}</i>", parse_mode='HTML')
                     return
 
-        reply_markup = main_menu_keyboard(user.id, user.first_name, None)
-        text = f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> Salom, <b>{user.first_name}</b>! STIM quiz botiga xush kelibsiz! <tg-emoji emoji-id=\"5992459729975122233\">📱</tg-emoji>\n\n<tg-emoji emoji-id=\"5406745015365943482\">👇</tg-emoji> <b>Quyidagi tugmalardan foydalaning:</b>"
+        # Сначала отправляем сообщение о проверке подписки
+        checking_msg = await message.answer("<tg-emoji emoji-id=\"5370935802844946281\">🔄</tg-emoji> Obunal tekshirilmoqda...", parse_mode='HTML')
 
-        # Отправляем фото приветствия с текстом и кнопками
-        try:
-            if WELCOME_IMAGE_URL:
-                await message.answer_photo(photo=WELCOME_IMAGE_URL, caption=text, reply_markup=reply_markup, parse_mode='HTML')
-            else:
-                await message.answer(text=text, reply_markup=reply_markup, parse_mode='HTML')
-        except Exception as e:
-            logger.error(f"Error sending welcome photo: {e}")
-            await message.answer(text=text, reply_markup=reply_markup, parse_mode='HTML')
-
-        # Проверка подписки в фоновом режиме
-        asyncio.create_task(check_and_notify_subscription(user.id, message))
+        # Запускаем асинхронную проверку подписки без блокировки
+        asyncio.create_task(check_and_notify_subscription(user.id, message, checking_msg))
 
     except Exception as e:
         logger.error(f"Critical error in start command: {e}")
@@ -742,20 +732,54 @@ async def cmd_start(message: Message):
         except:
             pass
 
-async def check_and_notify_subscription(user_id, message: Message):
-    """Асинхронная проверка подписки без замедления ответа"""
+async def check_and_notify_subscription(user_id, message: Message, checking_msg: Message):
+    """Асинхронная проверка подписки и отправка соответствующего ответа"""
     try:
-        await asyncio.sleep(1)  # Небольшая задержка
+        # Небольшая задержка перед проверкой
+        await asyncio.sleep(1)
         is_subscribed = await verify_subscription(user_id, force_check=True)
+
+        # Удаляем сообщение о проверке
+        try:
+            await checking_msg.delete()
+        except:
+            pass
+
         if not is_subscribed:
+            # Если не подписан - отправляем сообщение с требованием подписки
             channels = get_all_active_channels()
-            channels_text = "<tg-emoji emoji-id=\"5424818078833715060\">📢</tg-emoji> <b>Kanallarimizga obuna bo'ling:</b>\n\n"
+            channels_text = "<tg-emoji emoji-id=\"5424818078833715060\">📢</tg-emoji> <b>Kanalga obuna bo'lishingiz kerak!</b>\n\nBotdan foydalanish uchun quyidagi kanallarga obuna bo'ling:\n\n"
             for name, channel_id in channels.items():
                 channels_text += f"• {name}: https://t.me/{channel_id[1:]}\n"
             channels_text += "\n<tg-emoji emoji-id=\"5850654130497916523\">✅</tg-emoji> Obuna bo'ldim"
             await message.answer(channels_text, parse_mode='HTML', reply_markup=channels_keyboard())
+        else:
+            # Если подписан - отправляем приветственное сообщение
+            user = message.from_user
+            reply_markup = main_menu_keyboard(user_id, user.first_name, None)
+            text = f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> Salom, <b>{user.first_name}</b>! STIM quiz botiga xush kelibsiz! <tg-emoji emoji-id=\"5992459729975122233\">📱</tg-emoji>\n\n<tg-emoji emoji-id=\"5406745015365943482\">👇</tg-emoji> <b>Quyidagi tugmalardan foydalaning:</b>"
+
+            try:
+                if WELCOME_IMAGE_URL:
+                    await message.answer_photo(photo=WELCOME_IMAGE_URL, caption=text, reply_markup=reply_markup, parse_mode='HTML')
+                else:
+                    await message.answer(text=text, reply_markup=reply_markup, parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Error sending welcome photo: {e}")
+                await message.answer(text=text, reply_markup=reply_markup, parse_mode='HTML')
     except Exception as e:
-        logger.error(f"Error in subscription check: {e}")
+        logger.error(f"Error in check_and_notify_subscription: {e}")
+        try:
+            await checking_msg.delete()
+        except:
+            pass
+        # Отправляем сообщение об ошибке с меню
+        try:
+            user = message.from_user
+            await message.answer(f"Salom, {user.first_name}! Yuklashda xatolik yuz berdi, lekin menuni ochishingiz mumkin:", reply_markup=main_menu_keyboard(user.id, user.first_name, None))
+        except:
+            pass
+
 
 @router.callback_query(F.data == "check_subscription")
 async def check_subscription_callback(callback: CallbackQuery):
@@ -765,6 +789,12 @@ async def check_subscription_callback(callback: CallbackQuery):
     is_subscribed = await verify_subscription(user_id, force_check=True)
 
     if is_subscribed:
+        # Удаляем сообщение с запросом подписки
+        try:
+            await callback.message.delete()
+        except:
+            pass
+
         reply_markup = main_menu_keyboard(user_id, callback.from_user.first_name, None)
         text = f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> Salom, <b>{callback.from_user.first_name}</b>! STIM quiz botiga xush kelibsiz! <tg-emoji emoji-id=\"5992459729975122233\">📱</tg-emoji>\n\n<tg-emoji emoji-id=\"5406745015365943482\">👇</tg-emoji> <b>Quyidagi tugmalardan foydalaning:</b>"
         try:
