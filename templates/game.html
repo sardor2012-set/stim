@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arifmetik o'yin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow-x: hidden;
+            padding: 10px;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float 15s infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.3;
+            }
+            90% {
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+        }
+
+        @media (max-width: 400px) {
+            .game-container {
+                padding: 15px;
+                margin: 5px;
+                border-radius: 15px;
+            }
+
+            .game-title {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+
+            .timer-container {
+                width: 120px;
+                height: 120px;
+                margin: 0 auto 20px;
+            }
+
+            .timer-svg {
+                width: 120px;
+                height: 120px;
+            }
+
+            .timer-text {
+                font-size: 28px;
+            }
+
+            .timer-label {
+                font-size: 10px;
+                bottom: -20px;
+            }
+
+            .score-value {
+                font-size: 28px;
+            }
+
+            .problem-display {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .problem-text {
+                font-size: 32px;
+            }
+
+            .problem-result {
+                font-size: 32px;
+                margin-left: 10px;
+            }
+
+            .buttons-container {
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+
+            .btn {
+                padding: 15px;
+                font-size: 16px;
+            }
+
+            .streak-label {
+                font-size: 10px;
+            }
+
+            .streak-value {
+                font-size: 20px;
+            }
+
+            .start-title, .end-title {
+                font-size: 24px;
+            }
+
+            .start-subtitle, .end-subtitle {
+                font-size: 14px;
+            }
+
+            .final-score {
+                font-size: 48px;
+            }
+
+            .btn-start {
+                padding: 15px 30px;
+                font-size: 16px;
+            }
+
+            .feedback {
+                font-size: 80px;
+            }
+        }
+
+        .game-title {
+            text-align: center;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+        }
+
+        .timer-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 25px;
+        }
+
+        .timer-svg {
+            transform: rotate(-90deg);
+            width: 150px;
+            height: 150px;
+        }
+
+        .timer-circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 8;
+        }
+
+        .timer-circle {
+            fill: none;
+            stroke: url(#timerGradient);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 408;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.05s linear;
+            filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.5));
+        }
+
+        .timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .timer-label {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .score-display {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .score-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .score-value {
+            color: #fff;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+        }
+
+        .problem-display {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .problem-text {
+            color: #fff;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 3px;
+        }
+
+        .problem-result {
+            color: #4ecdc4;
+            font-size: 36px;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-correct {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(56, 239, 125, 0.3);
+        }
+
+        .btn-correct:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-wrong {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(235, 51, 73, 0.3);
+        }
+
+        .btn-wrong:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(235, 51, 73, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .start-screen, .end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.98);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .start-title, .end-title {
+            color: #fff;
+            font-size: 27px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .start-subtitle, .end-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .final-score {
+            color: #4ecdc4;
+            font-size: 72px;
+            font-weight: 800;
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(78, 205, 196, 0.5);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px 50px;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+
+        .feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .feedback.correct {
+            color: #38ef7d;
+            text-shadow: 0 0 50px rgba(56, 239, 125, 0.8);
+            animation: feedbackPop 0.5s ease-out;
+        }
+
+        .feedback.wrong {
+            color: #f45c43;
+            text-shadow: 0 0 50px rgba(244, 92, 67, 0.8);
+            animation: feedbackPop 0.5s ease-out;
+        }
+
+        @keyframes feedbackPop {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .streak-display {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .streak-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .streak-value {
+            color: #ff6b6b;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Leaderboard styles */
+        .leaderboard {
+            width: 100%;
+            min-height: 150px;
+            max-height: 350px;
+            overflow-y: auto;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .loader-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
+            color: #4ecdc4;
+            font-size: 24px;
+        }
+
+        .leaderboard-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+
+        .leaderboard-item:hover {
+            transform: scale(1.02);
+        }
+
+        .leaderboard-item.top-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.2) 100%);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .leaderboard-item.top-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.2) 0%, rgba(169, 169, 169, 0.2) 100%);
+            border: 1px solid rgba(192, 192, 192, 0.3);
+        }
+
+        .leaderboard-item.top-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.2) 0%, rgba(139, 69, 19, 0.2) 100%);
+            border: 1px solid rgba(205, 127, 50, 0.3);
+        }
+
+        .leaderboard-rank {
+            font-weight: 800;
+            width: 30px;
+            color: #4ecdc4;
+        }
+
+        .top-1 .leaderboard-rank { color: #ffd700; }
+        .top-2 .leaderboard-rank { color: #c0c0c0; }
+        .top-3 .leaderboard-rank { color: #cd7f32; }
+
+        .leaderboard-name {
+            flex: 1;
+            margin-left: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .leaderboard-score {
+            font-weight: 700;
+            color: #ffe66d;
+            background: rgba(255, 230, 109, 0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .user-rank, .best-score {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 12px;
+            border-radius: 15px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-rank-label, .best-score-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .user-rank-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #4ecdc4;
+            text-shadow: 0 0 15px rgba(78, 205, 196, 0.5);
+        }
+
+        .best-score-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffe66d;
+            text-shadow: 0 0 15px rgba(255, 230, 109, 0.5);
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .end-screen {
+            padding: 30px 20px;
+            justify-content: flex-start;
+            overflow-y: auto;
+        }
+
+        .end-screen::-webkit-scrollbar {
+            width: 0px;
+        }
+
+        .new-record {
+            color: #38ef7d;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="game-container">
+        <h1 class="game-title">ARIFMETIKA</h1>
+
+        <div class="timer-container">
+            <svg class="timer-svg" viewBox="0 0 150 150">
+                <defs>
+                    <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff6b6b"/>
+                        <stop offset="100%" style="stop-color:#feca57"/>
+                    </linearGradient>
+                </defs>
+                <circle class="timer-circle-bg" cx="75" cy="75" r="65"/>
+                <circle class="timer-circle" id="timerCircle" cx="75" cy="75" r="65"/>
+            </svg>
+            <div class="timer-text" id="timerText">30</div>
+        </div>
+
+        <div class="score-display">
+            <div class="score-label">Ochko:</div>
+            <div class="score-value" id="scoreValue">0</div>
+        </div>
+
+        <div class="streak-display">
+            <div class="streak-label">To'g'ri javoblar seriyasi:</div>
+            <div class="streak-value" id="streakValue">0</div>
+        </div>
+
+        <div class="problem-display">
+            <div class="problem-text" id="problemText">2 + 2</div>
+        </div>
+
+        <div class="buttons-container">
+            <button class="btn btn-correct" id="btnCorrect">✓</button>
+            <button class="btn btn-wrong" id="btnWrong">✗</button>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <!-- Start Screen -->
+        <div class="start-screen" id="startScreen">
+            <div class="start-title">ARIFMETIKA</div>
+            <div class="start-subtitle"><i class="fa-solid fa-gauge-high"></i> Tezlik va e'tiboringizni sinab ko'ring!</div>
+            <button class="btn-start" id="btnStart"><i class="fa-solid fa-play"></i> O‘YNASH</button>
+        </div>
+
+        <!-- End Screen -->
+        <div class="end-screen hidden" id="endScreen">
+            <div class="end-title"><i class="fa-solid fa-hourglass-end"></i> O'yin tugadi!</div>
+            <div class="end-subtitle"><i class="fa-solid fa-square-poll-vertical"></i> Sizning natijangiz:</div>
+            <div class="final-score" id="finalScore">0</div>
+            <div class="end-subtitle">ta to'g'ri javoblar</div>
+
+            <div class="stats-row">
+                <div class="best-score" id="bestScoreContainer" style="display: none;">
+                    <div class="best-score-label"><i class="fa-solid fa-chart-line"></i> Rekordingiz:</div>
+                    <div class="loader-container" id="bestScoreLoader" style="min-height: 40px; font-size: 18px;">
+                        <i class="fa-solid fa-spinner fa-spin-pulse"></i>
+                    </div>
+                    <div class="best-score-value" id="bestScore" style="display: none; display: flex; justify-content: center; align-items: center; text-align: center;">0</div>
+                    <div class="new-record" id="newRecord" style="display: none; font-size: 10px;">✨ YANGI REKORD! ✨</div>
+                </div>
+
+                <div class="user-rank" id="userRankContainer" style="display: none;">
+                    <div class="user-rank-label"><i class="fa-solid fa-users-between-lines"></i> O'rningiz:</div>
+                    <div class="loader-container" id="userRankLoader" style="min-height: 40px; font-size: 18px;">
+                        <i class="fa-solid fa-spinner fa-spin-pulse"></i>    
+                    </div>
+                    <div class="user-rank-value" id="userRank" style="display: none; display: flex; justify-content: center; align-items: center; text-align: center;">-</div>
+                </div>
+            </div>
+
+            <div class="leaderboard" id="leaderboard" style="display: none;">
+                <div class="leaderboard-title"><i class="fa-solid fa-ranking-star"></i> Eng baland rekordlar</div>
+                <div id="leaderboardList">
+                    <div class="loader-container">
+                        <i class="fa-solid fa-spinner fa-spin-pulse"></i>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-restart" id="btnRestart"><i class="fa-solid fa-repeat"></i> QAYTA O'YNASH</button>
+        </div>
+    </div>
+
+    <script>
+        // Game Configuration
+        const INITIAL_TIME = 10; // Starting seconds per question
+        const TIME_DECREASE = 0.4; // Seconds to decrease per correct answer
+        const MIN_TIME = 2; // Minimum time allowed
+        const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 65;
+
+        // Get user info from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+        const username = urlParams.get('username') || (userId ? 'User ' + userId : 'Anonymous');
+
+        // Game State
+        let score = 0;
+        let streak = 0;
+        let currentTimeLimit = INITIAL_TIME;
+        let timeLeft = currentTimeLimit;
+        let timerInterval = null;
+        let currentAnswer = null;
+        let isGameActive = false;
+
+        // DOM Elements
+        const timerCircle = document.getElementById('timerCircle');
+        const timerText = document.getElementById('timerText');
+        const scoreValue = document.getElementById('scoreValue');
+        const streakValue = document.getElementById('streakValue');
+        const problemText = document.getElementById('problemText');
+        const feedback = document.getElementById('feedback');
+        const startScreen = document.getElementById('startScreen');
+        const endScreen = document.getElementById('endScreen');
+        const finalScore = document.getElementById('finalScore');
+        const btnStart = document.getElementById('btnStart');
+        const btnRestart = document.getElementById('btnRestart');
+        const btnCorrect = document.getElementById('btnCorrect');
+        const btnWrong = document.getElementById('btnWrong');
+
+        // Initialize timer circle
+        timerCircle.style.strokeDashoffset = CIRCLE_CIRCUMFERENCE * (1 - timeLeft / currentTimeLimit);
+
+        // Create particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#667eea', '#feca57'];
+
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.width = Math.random() * 10 + 5 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = Math.random() * 10 + 15 + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Generate random math problem
+        function generateProblem() {
+            const operations = ['+', '-', '*', '/'];
+            const operation = operations[Math.floor(Math.random() * operations.length)];
+            let num1, num2, result;
+
+            switch(operation) {
+                case '+':
+                    num1 = Math.floor(Math.random() * 20) + 1;
+                    num2 = Math.floor(Math.random() * 20) + 1;
+                    result = num1 + num2;
+                    break;
+                case '-':
+                    num1 = Math.floor(Math.random() * 20) + 10;
+                    num2 = Math.floor(Math.random() * num1) + 1;
+                    result = num1 - num2;
+                    break;
+                case '*':
+                    num1 = Math.floor(Math.random() * 10) + 1;
+                    num2 = Math.floor(Math.random() * 10) + 1;
+                    result = num1 * num2;
+                    break;
+                case '/':
+                    num2 = Math.floor(Math.random() * 9) + 2;
+                    result = Math.floor(Math.random() * 10) + 1;
+                    num1 = num2 * result;
+                    break;
+            }
+
+            // Decide whether to show correct or incorrect answer
+            const showCorrect = Math.random() > 0.5;
+            currentAnswer = showCorrect;
+
+            if (showCorrect) {
+                problemText.innerHTML = `${num1} ${operation} ${num2} = <span class="problem-result">${result}</span>`;
+            } else {
+                // Generate wrong answer
+                let wrongResult = result + Math.floor(Math.random() * 5) - 2;
+                if (wrongResult === result) wrongResult += 3;
+                wrongResult = Math.max(0, wrongResult);
+                problemText.innerHTML = `${num1} ${operation} ${num2} = <span class="problem-result">${wrongResult}</span>`;
+            }
+        }
+
+        // Update timer display
+        function updateTimer() {
+            const progress = timeLeft / currentTimeLimit;
+            const offset = CIRCLE_CIRCUMFERENCE * (1 - progress);
+            timerCircle.style.strokeDashoffset = offset;
+            timerText.textContent = Math.ceil(timeLeft);
+        }
+
+        // Show feedback
+        function showFeedback(isCorrect) {
+            feedback.textContent = isCorrect ? '✓' : '✗';
+            feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'wrong');
+
+            // Force animation restart
+            feedback.style.animation = 'none';
+            feedback.offsetHeight; // Trigger reflow
+            feedback.style.animation = null;
+        }
+
+        // Handle answer
+        function handleAnswer(userSaidCorrect) {
+            if (!isGameActive) return;
+
+            const isCorrect = userSaidCorrect === currentAnswer;
+
+            if (isCorrect) {
+                score++;
+                streak++;
+                scoreValue.textContent = score;
+                streakValue.textContent = streak;
+
+                // Decrease time limit for next question (but not below minimum)
+                currentTimeLimit = Math.max(MIN_TIME, currentTimeLimit - TIME_DECREASE);
+                timeLeft = currentTimeLimit;
+                updateTimer();
+            } else {
+                // Wrong answer - game over
+                endGame();
+                return;
+            }
+
+            showFeedback(isCorrect);
+            generateProblem();
+        }
+
+        // Start game
+        function startGame() {
+            score = 0;
+            streak = 0;
+            currentTimeLimit = INITIAL_TIME;
+            timeLeft = currentTimeLimit;
+            isGameActive = true;
+
+            scoreValue.textContent = '0';
+            streakValue.textContent = '0';
+
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+
+            generateProblem();
+            updateTimer();
+
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.05;
+                updateTimer();
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 50);
+        }
+
+        // End game
+        function endGame() {
+            isGameActive = false;
+            clearInterval(timerInterval);
+
+            finalScore.textContent = score;
+            endScreen.classList.remove('hidden');
+
+            // Reset loaders and visibility
+            document.getElementById('bestScoreLoader').style.display = 'flex';
+            document.getElementById('bestScore').style.display = 'none';
+            document.getElementById('userRankLoader').style.display = 'flex';
+            document.getElementById('userRank').style.display = 'none';
+            document.getElementById('leaderboardList').innerHTML = '<div class="loader-container"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>';
+            document.getElementById('leaderboard').style.display = 'block';
+            document.getElementById('bestScoreContainer').style.display = 'block';
+            document.getElementById('userRankContainer').style.display = 'block';
+
+            // Save score and show leaderboard
+            if (userId && score > 0) {
+                saveScore(score);
+            } else if (userId) {
+                loadLeaderboard();
+            }
+        }
+
+        // Save score to database
+        async function saveScore(score) {
+            try {
+                const response = await fetch('/api/game/score', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: parseInt(userId),
+                        username: username,
+                        score: score
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show best score
+                    const bestScoreContainer = document.getElementById('bestScoreContainer');
+                    const bestScoreEl = document.getElementById('bestScore');
+                    const bestScoreLoader = document.getElementById('bestScoreLoader');
+                    const newRecordEl = document.getElementById('newRecord');
+
+                    bestScoreLoader.style.display = 'none';
+                    bestScoreEl.style.display = 'block';
+                    bestScoreEl.textContent = data.best_score;
+
+                    if (data.best_score === score) {
+                        newRecordEl.style.display = 'block';
+                    } else {
+                        newRecordEl.style.display = 'none';
+                    }
+                }
+
+                // Load leaderboard
+                loadLeaderboard();
+
+            } catch (error) {
+                console.error('Error saving score:', error);
+                loadLeaderboard();
+            }
+        }
+
+        // Load and display leaderboard
+        async function loadLeaderboard() {
+            try {
+                let url = '/api/game/leaderboard';
+                if (userId) {
+                    url += '?user_id=' + userId;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Show leaderboard
+                const leaderboard = document.getElementById('leaderboard');
+                const leaderboardList = document.getElementById('leaderboardList');
+
+                if (data.leaderboard && data.leaderboard.length > 0) {
+                    leaderboard.style.display = 'block';
+                    leaderboardList.innerHTML = '';
+
+                        data.leaderboard.forEach((item, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'leaderboard-item';
+                            if (item.rank === 1) div.classList.add('top-1');
+                            else if (item.rank === 2) div.classList.add('top-2');
+                            else if (item.rank === 3) div.classList.add('top-3');
+
+                            // item.username contains the full name from the database
+                            const displayName = item.username || 'User ' + item.user_id;
+
+                            div.innerHTML = `
+                                <span class="leaderboard-rank">${item.rank}</span>
+                                <span class="leaderboard-name">${displayName}</span>
+                                <span class="leaderboard-score">${item.best_score}</span>
+                            `;
+                            leaderboardList.appendChild(div);
+                        });
+                }
+
+                // Show user rank
+                if (userId && data.user_rank) {
+                    const userRankContainer = document.getElementById('userRankContainer');
+                    const userRankEl = document.getElementById('userRank');
+                    const userRankLoader = document.getElementById('userRankLoader');
+
+                    userRankLoader.style.display = 'none';
+                    userRankEl.style.display = 'block';
+                    userRankEl.textContent = '#' + data.user_rank;
+                }
+
+                // If user score was 0, we still need to hide best score loader if it was shown
+                if (score === 0 && data.user_best !== undefined) {
+                    const bestScoreEl = document.getElementById('bestScore');
+                    const bestScoreLoader = document.getElementById('bestScoreLoader');
+                    bestScoreLoader.style.display = 'none';
+                    bestScoreEl.style.display = 'block';
+                    bestScoreEl.textContent = data.user_best;
+                }
+
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Event Listeners
+        btnStart.addEventListener('click', startGame);
+        btnRestart.addEventListener('click', startGame);
+        btnCorrect.addEventListener('click', () => handleAnswer(true));
+        btnWrong.addEventListener('click', () => handleAnswer(false));
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!isGameActive) return;
+
+            if (e.key === 'ArrowLeft' || e.key === '1') {
+                handleAnswer(true);
+            } else if (e.key === 'ArrowRight' || e.key === '2') {
+                handleAnswer(false);
+            }
+        });
+
+        // Initialize
+        createParticles();
+    </script>
+</body>
+</html>
