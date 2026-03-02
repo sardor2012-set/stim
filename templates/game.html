@@ -822,10 +822,14 @@
             if (showCorrect) {
                 problemText.innerHTML = `${num1} ${operation} ${num2} = <span class="problem-result">${result}</span>`;
             } else {
-                // Generate wrong answer
-                let wrongResult = result + Math.floor(Math.random() * 5) - 2;
-                if (wrongResult === result) wrongResult += 3;
-                wrongResult = Math.max(0, wrongResult);
+                // Generate wrong answer - ensure it's different from correct answer
+                let wrongResult = result + Math.floor(Math.random() * 10) - 5;
+                wrongResult = Math.max(0, wrongResult); // Keep non-negative
+                // Keep generating until we get a different answer
+                while (wrongResult === result) {
+                    wrongResult = result + Math.floor(Math.random() * 10) - 5;
+                    wrongResult = Math.max(0, wrongResult);
+                }
                 problemText.innerHTML = `${num1} ${operation} ${num2} = <span class="problem-result">${wrongResult}</span>`;
             }
         }
