@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
+TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
 WEBAPP_URL = "https://stim-p9gv.onrender.com/"
 WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {
