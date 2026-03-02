@@ -417,8 +417,8 @@ def rate_limit_ip(limit: int = FLASK_RATE_LIMIT,
                 if current_time - ts < window
             ]
             if len(ip_request_timestamps[client_ip]) >= limit:
-                blocked_ips[client_ip] = time.time()
-                logger.warning(f"DDoS attempt detected from IP: {client_ip}")
+                # blocked_ips[client_ip] = time.time() # Disable auto-blocking to prevent "DDoS" false positives
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
                 return jsonify({
                     "error": "Juda ko‘p so‘rov yubordingiz. Iltimos, kuting.",
                     "rate_limit_exceeded": True
@@ -1663,13 +1663,17 @@ async def main():
     @app.route('/api/admin/user/<int:user_id>/delete', methods=['POST'])
     @rate_limit_ip(limit=20, window=60)
     def delete_admin_user(user_id):
+        if request.args.get('pass') != "admin123":
+            return jsonify({"error": "Unauthorized"}), 401
         try:
             with get_db() as conn:
                 with conn.cursor() as db:
-                    db.execute("DELETE FROM user_tasks WHERE user_id = %s",
-                               (user_id, ))
-                    db.execute("DELETE FROM users WHERE user_id = %s",
-                               (user_id, ))
+                    # Delete from all tables to avoid foreign key or logical issues
+                    db.execute("DELETE FROM user_tasks WHERE user_id = %s", (user_id, ))
+                    db.execute("DELETE FROM game_scores WHERE user_id = %s", (user_id, ))
+                    db.execute("DELETE FROM purchases WHERE user_id = %s", (user_id, ))
+                    db.execute("DELETE FROM reviews WHERE user_id = %s", (user_id, ))
+                    db.execute("DELETE FROM users WHERE user_id = %s", (user_id, ))
                     conn.commit()
             return jsonify({"success": True})
         except Exception as e:
