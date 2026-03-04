@@ -1265,6 +1265,140 @@ dp.message.middleware.register(spam_middleware)
 dp.callback_query.middleware.register(spam_middleware)
 
 
+class AdminStates(StatesGroup):
+    waiting_for_broadcast_text = State()
+
+
+@router.message(Command("admin"))
+async def admin_command(message: Message):
+    if message.from_user.id != 7592032451:
+        await message.answer("Kirish taqiqlangan! (Доступ запрещен)")
+        return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Ручная рассылка",
+                             callback_data="admin_broadcast_manual")
+    ],
+                                                     [
+                                                         InlineKeyboardButton(
+                                                             text=
+                                                             "Рассылка о новых задачах",
+                                                             callback_data=
+                                                             "admin_broadcast_tasks"
+                                                         )
+                                                     ],
+                                                     [
+                                                         InlineKeyboardButton(
+                                                             text="Статистика",
+                                                             callback_data=
+                                                             "admin_stats")
+                                                     ]])
+    await message.answer("Admin panelga xush kelibsiz", reply_markup=keyboard)
+
+
+@router.callback_query(F.data == "admin_stats")
+async def admin_stats(callback: CallbackQuery):
+    if callback.from_user.id != 7592032451:
+        return
+
+    try:
+        with get_db() as conn:
+            with conn.cursor() as db:
+                db.execute("SELECT COUNT(*) as count FROM users")
+                total_users = db.fetchone()['count']
+                db.execute("SELECT COUNT(*) as count FROM user_tasks")
+                total_tasks = db.fetchone()['count']
+                db.execute("SELECT COUNT(*) as count FROM game_scores")
+                total_games = db.fetchone()['count']
+
+        stats_text = (f"📊 СТАТИСТИКА:\n\n"
+                      f"👤 Всего пользователей: {total_users}\n"
+                      f"✅ Выполнено задач: {total_tasks}\n"
+                      f"🎮 Игр сыграно: {total_games}")
+        await callback.message.answer(stats_text)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in admin stats: {e}")
+        await callback.answer("Ошибка при получении статистики")
+
+
+@router.callback_query(F.data == "admin_broadcast_manual")
+async def admin_broadcast_manual(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != 7592032451:
+        return
+    await callback.message.answer("Рассылка учун текстни юборинг:")
+    await state.set_state(AdminStates.waiting_for_broadcast_text)
+    await callback.answer()
+
+
+@router.message(AdminStates.waiting_for_broadcast_text)
+async def process_broadcast_text(message: Message, state: FSMContext):
+    if message.from_user.id != 7592032451:
+        return
+
+    broadcast_text = message.text
+    await state.clear()
+    await message.answer("Рассылка бошланди...")
+
+    try:
+        with get_db() as conn:
+            with conn.cursor() as db:
+                db.execute("SELECT user_id FROM users")
+                users = db.fetchall()
+
+        count = 0
+        for user in users:
+            try:
+                await bot.send_message(user['user_id'], broadcast_text)
+                count += 1
+                await asyncio.sleep(0.05)
+            except Exception:
+                continue
+
+        await message.answer(f"Рассылка тугади. {count} та фойдаланувчига юборилди.")
+    except Exception as e:
+        logger.error(f"Error in manual broadcast: {e}")
+        await message.answer("Рассылкада хатолик юз берди.")
+
+
+@router.callback_query(F.data == "admin_broadcast_tasks")
+async def admin_broadcast_tasks(callback: CallbackQuery):
+    if callback.from_user.id != 7592032451:
+        return
+
+    await callback.message.answer("Янги вазифалар рассылкаси бошланди...", parse_mode='HTML')
+    text = "<tg-emoji emoji-id=\"5298609030321691620\">📣</tg-emoji> Yangi vazifalar sizni kutmoqda!\n\n<tg-emoji emoji-id=\"5224607267797606837\">⚡️</tg-emoji> Reytingingizni oshirish uchun vazifalarni bajaring!"
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Vazifalar", style="success", icon_custom_emoji_id="5282843764451195532",
+                             web_app=WebAppInfo(url=f"{WEBAPP_URL}"))
+    ]])
+
+    try:
+        with get_db() as conn:
+            with conn.cursor() as db:
+                db.execute("SELECT user_id FROM users")
+                users = db.fetchall()
+
+        count = 0
+        for user in users:
+            try:
+                await bot.send_message(user['user_id'],
+                                       text,
+                                       reply_markup=keyboard,
+                                       parse_mode='HTML')
+                count += 1
+                await asyncio.sleep(0.05)
+            except Exception:
+                continue
+
+        await callback.message.answer(
+            f"Рассылка тугади. {count} та фойдаланувчига юборилди.")
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in tasks broadcast: {e}")
+        await callback.answer("Ошибка при рассылке")
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     user = message.from_user
