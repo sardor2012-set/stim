@@ -577,28 +577,87 @@
     <div id="bundle-modal" class="modal-overlay">
         <div class="admin-modal">
             <h2 id="modal-title">Yangi to'plam</h2>
-            <div class="form-group">
-                <label>To'plam nomi</label>
-                <input type="text" id="bundle-name" class="form-input" placeholder="To'plam nomini kiriting">
+
+            <!-- Mode tabs -->
+            <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                <button id="tab-form" onclick="switchTab('form')" style="flex:1; padding: 9px; border-radius: 10px; border: 2px solid #667eea; background: #667eea; color: white; font-weight: 700; cursor: pointer; font-size: 0.88em; transition: all 0.2s;">
+                    <i class="fa-solid fa-pen-to-square"></i> Forma
+                </button>
+                <button id="tab-json" onclick="switchTab('json')" style="flex:1; padding: 9px; border-radius: 10px; border: 2px solid #667eea; background: white; color: #667eea; font-weight: 700; cursor: pointer; font-size: 0.88em; transition: all 0.2s;">
+                    <i class="fa-solid fa-code"></i> JSON
+                </button>
             </div>
-            <div class="form-group">
-                <label>Liga</label>
-                <select id="bundle-league" class="form-input">
-                    <option value="bronza">Bronza liga (5-6 sinf)</option>
-                    <option value="kumush">Kumush liga (7-8 sinf)</option>
-                    <option value="oltin">Oltin liga (9-11 sinf)</option>
-                </select>
+
+            <!-- FORM MODE -->
+            <div id="mode-form">
+                <div class="form-group">
+                    <label>To'plam nomi</label>
+                    <input type="text" id="bundle-name" class="form-input" placeholder="To'plam nomini kiriting">
+                </div>
+                <div class="form-group">
+                    <label>Liga</label>
+                    <select id="bundle-league" class="form-input">
+                        <option value="bronza">Bronza liga (5-6 sinf)</option>
+                        <option value="kumush">Kumush liga (7-8 sinf)</option>
+                        <option value="oltin">Oltin liga (9-11 sinf)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vaqt limiti (daqiqa)</label>
+                    <input type="number" id="bundle-time-limit" class="form-input" placeholder="0 - vaqt cheklanmagan" min="0" value="0">
+                    <small style="color: #888; font-size: 0.8em;">0 yoki bo'sh - vaqt cheklanmaydi</small>
+                </div>
+                <div id="questions-container"></div>
+                <button class="btn-add-q" onclick="addQuestionField()">
+                    <i class="fa-solid fa-plus"></i> Savol qo'shish
+                </button>
             </div>
-            <div class="form-group">
-                <label>Vaqt limiti (daqiqa)</label>
-                <input type="number" id="bundle-time-limit" class="form-input" placeholder="0 - vaqt cheklanmagan" min="0" value="0">
-                <small style="color: #888; font-size: 0.8em;">0 yoki bo'sh - vaqt cheklanmaydi</small>
+
+            <!-- JSON MODE -->
+            <div id="mode-json" style="display:none;">
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-code" style="color:#667eea;"></i> JSON formatida to'plam kiriting
+                    </label>
+                    <small style="color: #888; font-size: 0.8em; display:block; margin-bottom: 8px;">
+                        Quyidagi namuna asosida to'liq to'plam ma'lumotlarini JSON ko'rinishida kiriting
+                    </small>
+                    <textarea id="json-input" class="form-input" rows="14" spellcheck="false"
+                        style="font-family: 'Courier New', monospace; font-size: 0.82em; resize: vertical; line-height: 1.5; border-color: #e2e8f0;"
+                        placeholder='{
+  "name": "Matematika - 1-to&#39;plam",
+  "league_id": "bronza",
+  "time_limit": 10,
+  "questions": [
+    {
+      "question": "2 + 2 = ?",
+      "options": "3|4|5|6",
+      "correct_option": 1,
+      "rating": 5
+    },
+    {
+      "question": "5 × 3 = ?",
+      "options": "10|12|15|20",
+      "correct_option": 2,
+      "rating": 10
+    }
+  ]
+}'></textarea>
+                    <div id="json-error" style="color: #e53e3e; font-size: 0.82em; margin-top: 6px; display:none;"></div>
+                </div>
+                <div style="background: #f0f7ff; border: 1px solid #bee3f8; border-radius: 10px; padding: 12px; font-size: 0.8em; color: #2b6cb0;">
+                    <b><i class="fa-solid fa-circle-info"></i> Maydonlar:</b><br>
+                    <b>name</b> — to'plam nomi (majburiy)<br>
+                    <b>league_id</b> — <code>bronza</code> | <code>kumush</code> | <code>oltin</code> (majburiy)<br>
+                    <b>time_limit</b> — daqiqalarda vaqt (0 = cheklanmagan)<br>
+                    <b>questions[].question</b> — savol matni<br>
+                    <b>questions[].options</b> — variantlar <code>|</code> bilan ajratilgan<br>
+                    <b>questions[].correct_option</b> — to'g'ri javob indeksi (0 dan boshlanadi)<br>
+                    <b>questions[].rating</b> — to'g'ri javob uchun ball
+                </div>
             </div>
-            <div id="questions-container"></div>
-            <button class="btn-add-q" onclick="addQuestionField()">
-                <i class="fa-solid fa-plus"></i> Savol qo'shish
-            </button>
-            <div class="modal-footer">
+
+            <div class="modal-footer" style="margin-top: 18px;">
                 <button class="btn btn-save" onclick="saveBundle()">Saqlash</button>
                 <button class="btn btn-cancel" onclick="closeModal()">Bekor qilish</button>
             </div>
@@ -982,6 +1041,20 @@
             if (e.preventDefault) e.preventDefault();
         }
 
+        let currentTab = 'form';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const isForm = tab === 'form';
+            document.getElementById('mode-form').style.display = isForm ? '' : 'none';
+            document.getElementById('mode-json').style.display = isForm ? 'none' : '';
+            document.getElementById('tab-form').style.background = isForm ? '#667eea' : 'white';
+            document.getElementById('tab-form').style.color = isForm ? 'white' : '#667eea';
+            document.getElementById('tab-json').style.background = isForm ? 'white' : '#667eea';
+            document.getElementById('tab-json').style.color = isForm ? '#667eea' : 'white';
+            document.getElementById('json-error').style.display = 'none';
+        }
+
         function openModal(bundle = null) {
             editingBundleId = bundle ? bundle.id : null;
             document.getElementById('modal-title').innerText = bundle ? 'To\'plamni tahrirlash' : 'Yangi to\'plam';
@@ -989,6 +1062,8 @@
             document.getElementById('bundle-league').value = bundle && bundle.league_id ? bundle.league_id : 'bronza';
             document.getElementById('bundle-time-limit').value = bundle && bundle.time_limit ? bundle.time_limit : 0;
             document.getElementById('questions-container').innerHTML = '';
+            document.getElementById('json-input').value = '';
+            document.getElementById('json-error').style.display = 'none';
 
             if (bundle && bundle.questions && bundle.questions.length > 0) {
                 bundle.questions.forEach(q => addQuestionField(q));
@@ -996,6 +1071,7 @@
                 addQuestionField();
             }
 
+            switchTab('form');
             document.getElementById('bundle-modal').style.display = 'flex';
 
             // Close action menu if open
@@ -1036,39 +1112,97 @@
         }
 
         async function saveBundle() {
-            const name = document.getElementById('bundle-name').value.trim();
-            if (!name) {
-                alert('To\'plam nomini kiriting');
-                return;
-            }
+            let name, questions, league_id, time_limit;
 
-            const qElements = document.querySelectorAll('.question-form');
-            if (qElements.length === 0) {
-                alert('Kamida bitta savol qo\'shing');
-                return;
-            }
+            if (currentTab === 'json') {
+                const rawJson = document.getElementById('json-input').value.trim();
+                const errorEl = document.getElementById('json-error');
+                errorEl.style.display = 'none';
 
-            const questions = Array.from(qElements).map(el => {
-                const question = el.querySelector('.q-text').value.trim();
-                const options = el.querySelector('.q-options').value.trim();
-                const correct_option = parseInt(el.querySelector('.q-correct').value);
-                const rating = parseInt(el.querySelector('.q-rating').value) || 5;
-
-                if (!question || !options) {
-                    alert('Barcha savol maydonlarini to\'ldiring');
-                    throw new Error('Validatsiya muvaffaqiyatsiz');
+                if (!rawJson) {
+                    errorEl.textContent = 'JSON matnini kiriting';
+                    errorEl.style.display = 'block';
+                    return;
                 }
 
-                return {
-                    question: question,
-                    options: options,
-                    correct_option: isNaN(correct_option) ? 0 : correct_option,
-                    rating: isNaN(rating) ? 5 : rating
-                };
-            });
+                let parsed;
+                try {
+                    parsed = JSON.parse(rawJson);
+                } catch (e) {
+                    errorEl.textContent = 'JSON formati noto\'g\'ri: ' + e.message;
+                    errorEl.style.display = 'block';
+                    return;
+                }
 
-            const league_id = document.getElementById('bundle-league').value;
-            const time_limit = parseInt(document.getElementById('bundle-time-limit').value) || 0;
+                if (!parsed.name || typeof parsed.name !== 'string' || !parsed.name.trim()) {
+                    errorEl.textContent = '"name" maydoni majburiy';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                const validLeagues = ['bronza', 'kumush', 'oltin'];
+                if (!parsed.league_id || !validLeagues.includes(parsed.league_id)) {
+                    errorEl.textContent = '"league_id" maydoni bronza, kumush yoki oltin bo\'lishi kerak';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                if (!Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+                    errorEl.textContent = '"questions" massivi kamida 1 ta savoldan iborat bo\'lishi kerak';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                for (let i = 0; i < parsed.questions.length; i++) {
+                    const q = parsed.questions[i];
+                    if (!q.question || !q.options) {
+                        errorEl.textContent = `${i + 1}-savol: "question" va "options" maydonlari majburiy`;
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                }
+
+                name = parsed.name.trim();
+                league_id = parsed.league_id;
+                time_limit = parseInt(parsed.time_limit) || 0;
+                questions = parsed.questions.map(q => ({
+                    question: String(q.question).trim(),
+                    options: String(q.options).trim(),
+                    correct_option: isNaN(parseInt(q.correct_option)) ? 0 : parseInt(q.correct_option),
+                    rating: isNaN(parseInt(q.rating)) ? 5 : parseInt(q.rating)
+                }));
+            } else {
+                name = document.getElementById('bundle-name').value.trim();
+                if (!name) {
+                    alert('To\'plam nomini kiriting');
+                    return;
+                }
+
+                const qElements = document.querySelectorAll('.question-form');
+                if (qElements.length === 0) {
+                    alert('Kamida bitta savol qo\'shing');
+                    return;
+                }
+
+                questions = Array.from(qElements).map(el => {
+                    const question = el.querySelector('.q-text').value.trim();
+                    const options = el.querySelector('.q-options').value.trim();
+                    const correct_option = parseInt(el.querySelector('.q-correct').value);
+                    const rating = parseInt(el.querySelector('.q-rating').value) || 5;
+
+                    if (!question || !options) {
+                        alert('Barcha savol maydonlarini to\'ldiring');
+                        throw new Error('Validatsiya muvaffaqiyatsiz');
+                    }
+
+                    return {
+                        question: question,
+                        options: options,
+                        correct_option: isNaN(correct_option) ? 0 : correct_option,
+                        rating: isNaN(rating) ? 5 : rating
+                    };
+                });
+
+                league_id = document.getElementById('bundle-league').value;
+                time_limit = parseInt(document.getElementById('bundle-time-limit').value) || 0;
+            }
 
             const currentPass = pass || 'admin123';
             const url = editingBundleId 
