@@ -1725,7 +1725,27 @@
                     </button>
                 </div>
             </div>
-            
+
+            <script>
+                document.getElementById('mainCtaBtn').addEventListener('click', function() {
+                    var uid = (typeof globalUserId !== 'undefined' && globalUserId) ? globalUserId : null;
+                    if (!uid) {
+                        var urlParams = new URLSearchParams(window.location.search);
+                        uid = urlParams.get('user_id');
+                    }
+                    var uname = '';
+                    if (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        uname = tg.initDataUnsafe.user.first_name || '';
+                    }
+                    if (!uname) {
+                        var urlParams2 = new URLSearchParams(window.location.search);
+                        uname = urlParams2.get('username') || urlParams2.get('name') || 'User';
+                    }
+                    var url = '/game2?user_id=' + encodeURIComponent(uid || '') + '&username=' + encodeURIComponent(uname);
+                    window.location.href = url;
+                });
+            </script>
+
             <!-- Math Game Block -->
             <div class="math-game-block">
                 <div class="math-decoration top-left">∑</div>
