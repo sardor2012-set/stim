@@ -25,8 +25,8 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
-WEBAPP_URL = "https://2b2d3548-fc91-474c-929d-75e347bffe63-00-34oulo4kv2v7i.pike.replit.dev/"
+TOKEN = "8580149302:AAGd1_sL75AA4HjCnvGtG3-vRDd9Nt42L0M"
+WEBAPP_URL = "https://stim-p9gv.onrender.com"
 WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {
     " Stimora Lab": "@stimora_lab",
@@ -1585,9 +1585,6 @@ async def check_and_notify_subscription(user_id, message: Message,
             # Если не подписан - отправляем сообщение с требованием подписки
             channels = get_all_active_channels()
             channels_text = "<tg-emoji emoji-id=\"5424818078833715060\">📢</tg-emoji> <b>Kanalga obuna bo'lishingiz kerak!</b>\n\nBotdan foydalanish uchun quyidagi kanallarga obuna bo'ling:\n\n"
-            for name, channel_id in channels.items():
-                channels_text += f"• {name}: https://t.me/{channel_id[1:]}\n"
-            channels_text += "\n<tg-emoji emoji-id=\"5850654130497916523\">✅</tg-emoji> Obuna bo'ldim"
             await message.answer(channels_text,
                                  parse_mode='HTML',
                                  reply_markup=channels_keyboard())
@@ -1726,6 +1723,25 @@ async def menu_help(message: Message):
     await message.answer(support_text,
                          parse_mode='HTML',
                          reply_markup=main_menu_keyboard_no_webapp())
+
+
+@router.message(F.text.contains("Olmos ko'z"))
+async def menu_olmos_koz(message: Message):
+    user = message.from_user
+    domain = os.getenv('REPLIT_DEV_DOMAIN')
+    base_url = f"https://{domain}" if domain else WEBAPP_URL
+    game_url = f"{base_url}/game2?user_id={user.id}&username={quote(str(user.first_name or ''))}"
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="🎲 Olmos ko'z o'yinini ochish",
+            web_app=WebAppInfo(url=game_url)
+        )
+    ]])
+    await message.answer(
+        "<tg-emoji emoji-id=\"5231012545799666522\">💎</tg-emoji> <b>Olmos ko'z o'yini</b>\n\nUchta stakan, bitta sharcha — sharikning qaerdaligini toping!",
+        parse_mode='HTML',
+        reply_markup=keyboard
+    )
 
 
 @router.message(F.text == "Menu")
