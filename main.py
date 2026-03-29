@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
-WEBAPP_URL = "https://stim-p9gv.onrender.com"
+WEBAPP_URL = "https://2b2d3548-fc91-474c-929d-75e347bffe63-00-34oulo4kv2v7i.pike.replit.dev/"
 WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {
     " Stimora Lab": "@stimora_lab",
@@ -35,7 +35,10 @@ REQUIRED_CHANNELS = {
 ADMIN_IDS = [7592032451, 6823526508]
 ADMIN_ID = 7592032451
 
-DATABASE_URL = "postgresql://stim_user:54hTO7sGDG8nvaGl87qbEhFF1ifJ765X@dpg-d74meuruibrs739ns4ag-a/stim_db_wgez"
+DATABASE_URL = os.environ.get(
+    "RENDER_DB_URL",
+    "postgresql://stim_user:54hTO7sGDG8nvaGl87qbEhFF1ifJ765X@dpg-d74meuruibrs739ns4ag-a.oregon-postgres.render.com/stim_db_wgez"
+)
 
 
 def main_menu_keyboard(user_id=None, name=None, photo_url=None):
@@ -80,7 +83,10 @@ def main_menu_keyboard(user_id=None, name=None, photo_url=None):
                        KeyboardButton(
                            text=" Olmos ko'z o'yini",
                            style="success",
-                           icon_custom_emoji_id="5231012545799666522")
+                           icon_custom_emoji_id="5231012545799666522",
+                           web_app=WebAppInfo(
+                               url=f"{base_url}/game2?user_id={user_id}&username={quote(str(name or ''))}"
+                           ))
                    ]],
         resize_keyboard=True,
         one_time_keyboard=False)
