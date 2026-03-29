@@ -35,7 +35,7 @@ REQUIRED_CHANNELS = {
 ADMIN_IDS = [7592032451, 6823526508]
 ADMIN_ID = 7592032451
 
-DATABASE_URL = "postgresql://stim_user:JKHFlWhG880JMQk7rYGZA4bNCEwT9Dak@dpg-d6glon5m5p6s73b5dh40-a.oregon-postgres.render.com/stim_db_yesu"
+DATABASE_URL = "postgresql://stim_user:54hTO7sGDG8nvaGl87qbEhFF1ifJ765X@dpg-d74meuruibrs739ns4ag-a/stim_db_wgez"
 
 
 def main_menu_keyboard(user_id=None, name=None, photo_url=None):
