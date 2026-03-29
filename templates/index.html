@@ -1218,6 +1218,200 @@
             100% { opacity: 0; transform: scale(0.5) translateY(-20px); }
         }
         #app-content.loader-hidden { display: none !important; }
+
+        .card-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* супер-минималистичная карточка */
+        .cup-card {
+            max-width: 520px;
+            width: 100%;
+            background: linear-gradient(135deg, #6a5cff, #ff4ecd, #00d4ff);
+            border-radius: 24px;
+            padding: 1rem 1.2rem 2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
+            border: 1px solid #EDF2F7;
+            text-align: center;
+        }
+
+        .cup-card:hover {
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.05);
+            border-color: #E2E8F0;
+        }
+
+        /* группа стаканов — перевёрнутые (180deg) */
+        .cups-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            position: relative;
+        }
+
+        .cup-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* перевёрнутый стакан (rotate(180deg)) */
+        .cup-svg {
+            width: 100px;
+            transition: all 0.2s ease;
+            display: block;
+        }
+
+        .cup-svg svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.05));
+        }
+
+        /* перевёрнутый стакан — поворот на 180 градусов */
+        .cup-wrapper .cup-svg {
+            transform: rotate(180deg);
+        }
+
+        /* средний стакан — приподнят */
+        .cup-wrapper.middle-raised {
+            transform: translateY(-18px);
+        }
+
+        /* шарик под приподнятым стаканом — всегда виден (статичная рекламная карточка) */
+        .ball-under {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 28px;
+            background: radial-gradient(circle at 35% 35%, #2C2C2C, #111111);
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            z-index: 5;
+        }
+
+        /* для остальных стаканов — шарика нет */
+        .cup-wrapper:not(.middle-raised) .ball-under {
+            display: none;
+        }
+
+        /* заголовок */
+        .game-title {
+            font-size: 1.65rem;
+            font-weight: 550;
+            letter-spacing: -0.3px;
+            color: #1A1A1A;
+            margin-bottom: 0.5rem;
+        }
+
+        .game-title strong {
+            font-weight: 620;
+            color: #000;
+        }
+
+        .tagline {
+            font-size: 0.85rem;
+            font-weight: 430;
+            color: #d4c8c7;
+            margin-bottom: 1.5rem;
+            border-top: 1px solid #F0F2F4;
+            display: inline-block;
+            padding-top: 0.7rem;
+        }
+
+        /* описание */
+        .mechanics {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #2C3E42;
+            background: #F9FAFB;
+            padding: 1rem 1.2rem;
+            border-radius: 24px;
+            margin: 1.2rem 0 1.5rem;
+            font-weight: 430;
+            border: 1px solid #EDF2F7;
+        }
+
+        .mechanics span {
+            font-weight: 530;
+            color: #000000;
+        }
+
+        /* индикатор shuffle */
+        .shuffle-minimal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0 1rem;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            color: #8E9BAE;
+            font-weight: 460;
+            text-transform: uppercase;
+        }
+
+        /* кнопка */
+        .cta-button {
+            background: #000000;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            border-radius: 48px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+        }
+
+        .cta-button:hover {
+            background: #2C2C2C;
+            transform: scale(0.98);
+        }
+
+        .cta-button:active {
+            transform: scale(0.96);
+        }
+
+        @media (max-width: 550px) {
+            .cup-card {
+                padding: 1rem 1.2rem 2rem;
+            }
+            .cup-svg {
+                width: 75px;
+            }
+            .cups-row {
+                gap: 0.8rem;
+            }
+            .ball-under {
+                width: 22px;
+                height: 22px;
+                bottom: -24px;
+            }
+            .cup-wrapper.middle-raised {
+                transform: translateY(-12px);
+            }
+            .game-title {
+                font-size: 1.35rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1363,6 +1557,175 @@
                 </div>
             </div>
 
+            <div class="card-container">
+                <div class="cup-card">
+                <h1 style="font-weight: 800; margin-bottom: 30px; font-size: 1.4em; color: #fff; text-shadow: 0 0 20px rgba(233, 69, 96, 0.5); position: relative; z-index: 1;"><i class="fa-solid fa-eye"></i> Olmos ko'z o'yini</h1>
+                    <div class="cups-row">
+                        <!-- стакан 1 (левый) - перевёрнутый -->
+                        <div class="cup-wrapper">
+                            <div class="cup-svg">
+                                <svg viewBox="-7.64 0 42.592 42.592" xmlns="http://www.w3.org/2000/svg">
+                                    <g transform="translate(-121.232 -235.597)">
+                                        <g>
+                                            <g>
+                                                <g>
+                                                    <g>
+                                                        <g>
+                                                            <path d="M134.89,245.008c-6.579,0-13.658-1.472-13.658-4.705s7.079-4.706,13.658-4.706,13.657,1.473,13.657,4.706S141.468,245.008,134.89,245.008Zm0-7.411c-7.692,0-11.658,1.9-11.658,2.706s3.966,2.705,11.658,2.705,11.657-1.9,11.657-2.705S142.581,237.6,134.89,237.6Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M134.89,278.189c-4.68,0-8.517-1.148-10.014-3l1.554-1.258c.88,1.087,3.9,2.256,8.46,2.256,3.9,0,7.01-.854,8.539-2.343l1.4,1.432C142.9,277.155,139.369,278.189,134.89,278.189Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M125.689,275.592a1,1,0,0,1-1-.91l-3-33.334a1,1,0,0,1,1.992-.18l3,33.334a1,1,0,0,1-.906,1.086C125.749,275.591,125.719,275.592,125.689,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M144.09,275.592c-.03,0-.06,0-.091,0a1,1,0,0,1-.906-1.086l3-33.334a1,1,0,1,1,1.992.18l-3,33.334A1,1,0,0,1,144.09,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M138.371,277.211h-.029a1,1,0,0,1-.971-1.028l.584-20.751a.992.992,0,0,1,.186-.553c.074-.1,1.857-2.56,4.432-2.772a4.923,4.923,0,0,1,3.945,1.646,1,1,0,0,1-1.415,1.414,3.012,3.012,0,0,0-2.366-1.067,4.68,4.68,0,0,0-2.793,1.723l-.574,20.417A1,1,0,0,1,138.371,277.211Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M131.63,277.211a1,1,0,0,1-1-.971l-.574-20.418a4.648,4.648,0,0,0-2.8-1.722,3.017,3.017,0,0,0-2.359,1.067,1,1,0,0,1-1.414-1.414,4.932,4.932,0,0,1,3.945-1.646c2.574.212,4.358,2.667,4.432,2.772a.992.992,0,0,1,.186.553l.584,20.751a1,1,0,0,1-.971,1.028Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                    </g>
+                                                    <g>
+                                                        <path d="M131.047,256.46a1,1,0,0,1-.656-1.754c1.669-1.45,5.711-3.306,9.065.047a1,1,0,1,1-1.414,1.414c-2.889-2.888-6.2-.073-6.339.048A.993.993,0,0,1,131.047,256.46Z" fill="#111111"/>
+                                                    </g>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.06,256.019" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.353,251.081" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- стакан 2 (средний) - перевёрнутый, приподнятый, под ним шарик -->
+                        <div class="cup-wrapper middle-raised">
+                            <div class="cup-svg">
+                                <svg viewBox="-7.64 0 42.592 42.592" xmlns="http://www.w3.org/2000/svg">
+                                    <g transform="translate(-121.232 -235.597)">
+                                        <g>
+                                            <g>
+                                                <g>
+                                                    <g>
+                                                        <g>
+                                                            <path d="M134.89,245.008c-6.579,0-13.658-1.472-13.658-4.705s7.079-4.706,13.658-4.706,13.657,1.473,13.657,4.706S141.468,245.008,134.89,245.008Zm0-7.411c-7.692,0-11.658,1.9-11.658,2.706s3.966,2.705,11.658,2.705,11.657-1.9,11.657-2.705S142.581,237.6,134.89,237.6Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M134.89,278.189c-4.68,0-8.517-1.148-10.014-3l1.554-1.258c.88,1.087,3.9,2.256,8.46,2.256,3.9,0,7.01-.854,8.539-2.343l1.4,1.432C142.9,277.155,139.369,278.189,134.89,278.189Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M125.689,275.592a1,1,0,0,1-1-.91l-3-33.334a1,1,0,0,1,1.992-.18l3,33.334a1,1,0,0,1-.906,1.086C125.749,275.591,125.719,275.592,125.689,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M144.09,275.592c-.03,0-.06,0-.091,0a1,1,0,0,1-.906-1.086l3-33.334a1,1,0,1,1,1.992.18l-3,33.334A1,1,0,0,1,144.09,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M138.371,277.211h-.029a1,1,0,0,1-.971-1.028l.584-20.751a.992.992,0,0,1,.186-.553c.074-.1,1.857-2.56,4.432-2.772a4.923,4.923,0,0,1,3.945,1.646,1,1,0,0,1-1.415,1.414,3.012,3.012,0,0,0-2.366-1.067,4.68,4.68,0,0,0-2.793,1.723l-.574,20.417A1,1,0,0,1,138.371,277.211Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M131.63,277.211a1,1,0,0,1-1-.971l-.574-20.418a4.648,4.648,0,0,0-2.8-1.722,3.017,3.017,0,0,0-2.359,1.067,1,1,0,0,1-1.414-1.414,4.932,4.932,0,0,1,3.945-1.646c2.574.212,4.358,2.667,4.432,2.772a.992.992,0,0,1,.186.553l.584,20.751a1,1,0,0,1-.971,1.028Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                    </g>
+                                                    <g>
+                                                        <path d="M131.047,256.46a1,1,0,0,1-.656-1.754c1.669-1.45,5.711-3.306,9.065.047a1,1,0,1,1-1.414,1.414c-2.889-2.888-6.2-.073-6.339.048A.993.993,0,0,1,131.047,256.46Z" fill="#111111"/>
+                                                    </g>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.06,256.019" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.353,251.081" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </div>
+                            <!-- шарик под приподнятым стаканом -->
+                            <div class="ball-under"></div>
+                        </div>
+
+                        <!-- стакан 3 (правый) - перевёрнутый -->
+                        <div class="cup-wrapper">
+                            <div class="cup-svg">
+                                <svg viewBox="-7.64 0 42.592 42.592" xmlns="http://www.w3.org/2000/svg">
+                                    <g transform="translate(-121.232 -235.597)">
+                                        <g>
+                                            <g>
+                                                <g>
+                                                    <g>
+                                                        <g>
+                                                            <path d="M134.89,245.008c-6.579,0-13.658-1.472-13.658-4.705s7.079-4.706,13.658-4.706,13.657,1.473,13.657,4.706S141.468,245.008,134.89,245.008Zm0-7.411c-7.692,0-11.658,1.9-11.658,2.706s3.966,2.705,11.658,2.705,11.657-1.9,11.657-2.705S142.581,237.6,134.89,237.6Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M134.89,278.189c-4.68,0-8.517-1.148-10.014-3l1.554-1.258c.88,1.087,3.9,2.256,8.46,2.256,3.9,0,7.01-.854,8.539-2.343l1.4,1.432C142.9,277.155,139.369,278.189,134.89,278.189Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M125.689,275.592a1,1,0,0,1-1-.91l-3-33.334a1,1,0,0,1,1.992-.18l3,33.334a1,1,0,0,1-.906,1.086C125.749,275.591,125.719,275.592,125.689,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <path d="M144.09,275.592c-.03,0-.06,0-.091,0a1,1,0,0,1-.906-1.086l3-33.334a1,1,0,1,1,1.992.18l-3,33.334A1,1,0,0,1,144.09,275.592Z" fill="#111111"/>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M138.371,277.211h-.029a1,1,0,0,1-.971-1.028l.584-20.751a.992.992,0,0,1,.186-.553c.074-.1,1.857-2.56,4.432-2.772a4.923,4.923,0,0,1,3.945,1.646,1,1,0,0,1-1.415,1.414,3.012,3.012,0,0,0-2.366-1.067,4.68,4.68,0,0,0-2.793,1.723l-.574,20.417A1,1,0,0,1,138.371,277.211Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                        <g>
+                                                            <g>
+                                                                <path d="M131.63,277.211a1,1,0,0,1-1-.971l-.574-20.418a4.648,4.648,0,0,0-2.8-1.722,3.017,3.017,0,0,0-2.359,1.067,1,1,0,0,1-1.414-1.414,4.932,4.932,0,0,1,3.945-1.646c2.574.212,4.358,2.667,4.432,2.772a.992.992,0,0,1,.186.553l.584,20.751a1,1,0,0,1-.971,1.028Z" fill="#111111"/>
+                                                            </g>
+                                                        </g>
+                                                    </g>
+                                                    <g>
+                                                        <path d="M131.047,256.46a1,1,0,0,1-.656-1.754c1.669-1.45,5.711-3.306,9.065.047a1,1,0,1,1-1.414,1.414c-2.889-2.888-6.2-.073-6.339.048A.993.993,0,0,1,131.047,256.46Z" fill="#111111"/>
+                                                    </g>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.06,256.019" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                                <g>
+                                                    <path d="M143.353,251.081" fill="none" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h1 class="game-title">
+                        Uchta <strong>stakan</strong> · bitta <strong>sharcha</strong>
+                    </h1>
+                    <div class="tagline">Ko'zingizni charqlang· Epchillikni kuchaytiring</div>
+
+                    <div class="mechanics">
+                        <span>🎯 Sharik</span> ko'tarilgan stakan ostida, stakanlar <span>aralashtiriladi</span> - sharikning qaerdaligini topishingiz kerak.
+                    </div>
+
+                    <button class="cta-button" id="mainCtaBtn">
+                        🎲 O'ynash →
+                    </button>
+                </div>
+            </div>
+            
             <!-- Math Game Block -->
             <div class="math-game-block">
                 <div class="math-decoration top-left">∑</div>
