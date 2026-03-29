@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stakan o'yini</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow-x: hidden;
+            padding: 10px;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .particles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: floatP 18s infinite;
+            opacity: 0.2;
+        }
+        @keyframes floatP {
+            0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+            10%  { opacity: 0.2; }
+            90%  { opacity: 0.2; }
+            100% { transform: translateY(-110vh) rotate(720deg); opacity: 0; }
+        }
+
+        .game-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            margin: 10px;
+            overflow: hidden;
+        }
+
+        /* ─── GAME SCREEN ─── */
+        .game-screen {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #fff;
+            text-align: center;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(99,179,237,0.5);
+        }
+
+        .round-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .score-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+        .score-box {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+        .score-label {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .score-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #63b3ed;
+        }
+
+        .status-msg {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.85);
+            text-align: center;
+            min-height: 20px;
+            transition: color 0.3s;
+        }
+
+        /* ─── Stage ─── */
+        .stage {
+            position: relative;
+            width: 100%;
+            height: 200px;
+        }
+
+        .cup-slot {
+            position: absolute;
+            bottom: 14px;
+            width: 80px;
+            height: 150px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            cursor: default;
+            transition: left 0.5s cubic-bezier(0.68,-0.55,0.27,1.55);
+        }
+        .cup-slot.clickable { cursor: pointer; }
+        .cup-slot.clickable:hover .cup-body {
+            filter: brightness(1.25) drop-shadow(0 0 8px rgba(255,200,100,0.5));
+        }
+
+        .ball {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ffd700, #ff8c00);
+            box-shadow: 0 0 14px 4px rgba(255,165,0,0.6), inset 0 2px 4px rgba(255,255,255,0.4);
+            z-index: 1;
+            transition: opacity 0.25s;
+        }
+        .ball.hidden { opacity: 0; pointer-events: none; }
+
+        .cup-wrap {
+            position: relative;
+            z-index: 2;
+            transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
+        }
+        .cup-wrap.lifted { transform: translateY(-110px); }
+
+        .cup-body {
+            width: 80px; height: 115px;
+            transition: filter 0.2s;
+        }
+        .cup-body svg {
+            width: 100%; height: 100%;
+            filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
+        }
+
+        .platform {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 14px;
+            background: linear-gradient(180deg, #4a3728, #2d1f14);
+            border-radius: 6px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+        }
+
+        .btn {
+            padding: 13px 36px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.5px;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #63b3ed, #4299e1);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(66,153,225,0.45);
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(66,153,225,0.5); }
+        .btn-start:active { transform: translateY(0); }
+        .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ─── END SCREEN ─── */
+        .end-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 20px 24px;
+            gap: 14px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        .end-screen::-webkit-scrollbar { width: 0; }
+        .end-screen.visible { display: flex; }
+
+        .end-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #fff;
+            text-align: center;
+        }
+        .end-subtitle {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.55);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .final-score-big {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #63b3ed;
+            text-shadow: 0 0 30px rgba(99,179,237,0.5);
+            line-height: 1;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+        .stat-card {
+            flex: 1;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-card-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+        }
+        .stat-card-loader { color: #4ecdc4; font-size: 18px; }
+        .stat-card-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .stat-card-value.record { color: #ffe66d; text-shadow: 0 0 12px rgba(255,230,109,0.4); }
+        .stat-card-value.rank   { color: #4ecdc4; text-shadow: 0 0 12px rgba(78,205,196,0.4); }
+
+        .new-record {
+            color: #38ef7d;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        /* Leaderboard */
+        .leaderboard {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .leaderboard::-webkit-scrollbar { width: 4px; }
+        .leaderboard::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        .leaderboard-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 12px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.07);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+            transition: transform 0.2s;
+        }
+        .leaderboard-item:hover { transform: scale(1.02); }
+        .leaderboard-item.top-1 { background: linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,165,0,.18)); border:1px solid rgba(255,215,0,.3); }
+        .leaderboard-item.top-2 { background: linear-gradient(135deg,rgba(192,192,192,.18),rgba(169,169,169,.18)); border:1px solid rgba(192,192,192,.3); }
+        .leaderboard-item.top-3 { background: linear-gradient(135deg,rgba(205,127,50,.18),rgba(139,69,19,.18));  border:1px solid rgba(205,127,50,.3); }
+
+        .lb-rank  { font-weight: 800; width: 26px; color: #4ecdc4; }
+        .lb-name  { flex:1; margin-left:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+        .lb-score { font-weight:700; color:#ffe66d; background:rgba(255,230,109,.1); padding:2px 8px; border-radius:6px; }
+
+        .top-1 .lb-rank { color:#ffd700; }
+        .top-2 .lb-rank { color:#c0c0c0; }
+        .top-3 .lb-rank { color:#cd7f32; }
+
+        .loader-container { display:flex; justify-content:center; align-items:center; min-height:60px; color:#4ecdc4; font-size:22px; }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(102,126,234,0.4);
+            transition: all 0.3s;
+        }
+        .btn-restart:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(102,126,234,0.5); }
+    </style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+
+<div class="game-container">
+
+    <!-- ═══ GAME SCREEN ═══ -->
+    <div class="game-screen" id="gameScreen">
+        <h1>🥤 Stakan o'yini</h1>
+
+        <div class="score-row">
+            <div class="score-box">
+                <div class="score-label">Ochko</div>
+                <div class="score-value" id="scoreEl">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Bosqich</div>
+                <div class="score-value" id="roundEl" style="color:#f6e05e">1</div>
+            </div>
+        </div>
+
+        <!-- Stage -->
+        <div class="stage" id="stage">
+            <!-- Cup 0 -->
+            <div class="cup-slot" id="cup0">
+                <div class="ball hidden" id="ball0"></div>
+                <div class="cup-wrap" id="wrap0">
+                    <div class="cup-body">
+                        <svg viewBox="0 0 80 110" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="cg0" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%"   stop-color="#7b5ea7"/>
+                                    <stop offset="50%"  stop-color="#9b7dc8"/>
+                                    <stop offset="100%" stop-color="#6a4f92"/>
+                                </linearGradient>
+                            </defs>
+                            <polygon points="18,5 62,5 76,110 4,110" fill="url(#cg0)"/>
+                            <rect x="16" y="2" width="48" height="8" rx="3" fill="#c4a8e8"/>
+                            <rect x="2" y="103" width="76" height="7" rx="2" fill="#b89cd6"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <!-- Cup 1 -->
+            <div class="cup-slot" id="cup1">
+                <div class="ball hidden" id="ball1"></div>
+                <div class="cup-wrap" id="wrap1">
+                    <div class="cup-body">
+                        <svg viewBox="0 0 80 110" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="cg1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%"   stop-color="#7b5ea7"/>
+                                    <stop offset="50%"  stop-color="#9b7dc8"/>
+                                    <stop offset="100%" stop-color="#6a4f92"/>
+                                </linearGradient>
+                            </defs>
+                            <polygon points="18,5 62,5 76,110 4,110" fill="url(#cg1)"/>
+                            <rect x="16" y="2" width="48" height="8" rx="3" fill="#c4a8e8"/>
+                            <rect x="2" y="103" width="76" height="7" rx="2" fill="#b89cd6"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <!-- Cup 2 -->
+            <div class="cup-slot" id="cup2">
+                <div class="ball hidden" id="ball2"></div>
+                <div class="cup-wrap" id="wrap2">
+                    <div class="cup-body">
+                        <svg viewBox="0 0 80 110" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="cg2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%"   stop-color="#7b5ea7"/>
+                                    <stop offset="50%"  stop-color="#9b7dc8"/>
+                                    <stop offset="100%" stop-color="#6a4f92"/>
+                                </linearGradient>
+                            </defs>
+                            <polygon points="18,5 62,5 76,110 4,110" fill="url(#cg2)"/>
+                            <rect x="16" y="2" width="48" height="8" rx="3" fill="#c4a8e8"/>
+                            <rect x="2" y="103" width="76" height="7" rx="2" fill="#b89cd6"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="platform"></div>
+        </div>
+
+        <button class="btn btn-start" id="startBtn" onclick="startRound()">▶ Boshlash</button>
+
+        <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <!-- ═══ END SCREEN ═══ -->
+    <div class="end-screen" id="endScreen">
+        <div class="end-title"><i class="fa-solid fa-flag-checkered"></i> O'yin tugadi!</div>
+        <div class="end-subtitle">Sizning natijangiz</div>
+        <div class="final-score-big" id="finalScore">0</div>
+        <div class="end-subtitle">ta to'g'ri javob</div>
+
+        <div class="stats-row">
+            <div class="stat-card" id="recordCard">
+                <div class="stat-card-label"><i class="fa-solid fa-chart-line"></i> Rekordingiz</div>
+                <div class="loader-container stat-card-loader" id="recordLoader"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+                <div class="stat-card-value record" id="recordVal" style="display:none">0</div>
+                <div class="new-record" id="newRecord" style="display:none">✨ YANGI REKORD!    </div>
+            </div>
+            <div class="stat-card" id="rankCard">
+                <div class="stat-card-label"><i class="fa-solid fa-users-between-lines"></i> O'rningiz</div>
+                <div class="loader-container stat-card-loader" id="rankLoader"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+                <div class="stat-card-value rank" id="rankVal" style="display:none">-</div>
+            </div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard">
+            <div class="leaderboard-title"><i class="fa-solid fa-ranking-star"></i> Eng baland rekordlar</div>
+            <div id="leaderboardList">
+                <div class="loader-container"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+            </div>
+        </div>
+
+        <button class="btn-restart" onclick="restartGame()"><i class="fa-solid fa-repeat"></i> QAYTA O'YNASH</button>
+    </div>
+
+</div>
+
+<script>
+    // ─── Particles ─────────────────────────────────────────────
+    const pCont = document.getElementById('particles');
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 6 + 3;
+        Object.assign(p.style, {
+            width: size+'px', height: size+'px',
+            left: Math.random()*100+'%',
+            background: ['#63b3ed','#9b7dc8','#f6e05e','#68d391'][Math.floor(Math.random()*4)],
+            animationDelay: (Math.random()*15)+'s',
+            animationDuration: (12+Math.random()*10)+'s'
+        });
+        pCont.appendChild(p);
+    }
+
+    // ─── User info ─────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId   = urlParams.get('user_id');
+    const username = urlParams.get('username') || (userId ? 'User ' + userId : 'Anonymous');
+
+    // ─── Difficulty progression ────────────────────────────────
+    const BASE_SHUFFLES = 6;
+    const BASE_SPEED    = 480;   // ms per shuffle step
+    const MIN_SPEED     = 120;
+    const SHUFFLE_INC   = 2;     // +2 shuffles per correct answer
+    const SPEED_DEC     = 28;    // −28ms per correct answer
+
+    // ─── State ─────────────────────────────────────────────────
+    let score     = 0;
+    let round     = 1;
+    let ballIndex = 0;
+    let positions = [0, 1, 2];
+    let phase     = 'idle';
+
+    function currentShuffles() { return BASE_SHUFFLES + (round - 1) * SHUFFLE_INC; }
+    function currentSpeed()    { return Math.max(MIN_SPEED, BASE_SPEED - (round - 1) * SPEED_DEC); }
+
+    // ─── Cup slot positions ────────────────────────────────────
+    function getSlotLeft(slot) {
+        const stage = document.getElementById('stage');
+        const w = stage.offsetWidth;
+        const cx = w / 2;
+        const offsets = [-90, 0, 90];
+        return (cx + offsets[slot] - 40) + 'px';
+    }
+    function applyPositions(animate) {
+        for (let c = 0; c < 3; c++) {
+            const el = document.getElementById('cup' + c);
+            el.style.transition = animate
+                ? 'left 0.5s cubic-bezier(0.68,-0.55,0.27,1.55)'
+                : 'none';
+            el.style.left = getSlotLeft(positions[c]);
+        }
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ─── UI helpers ────────────────────────────────────────────
+    function liftCup(i, up)     { document.getElementById('wrap' + i).classList.toggle('lifted', up); }
+    function showBall(i, show)  { document.getElementById('ball' + i).classList.toggle('hidden', !show); }
+    function setStatus(msg, color) {
+        const el = document.getElementById('statusMsg');
+        el.textContent = msg;
+        el.style.color = color || 'rgba(255,255,255,0.85)';
+    }
+    function updateHUD() {
+        document.getElementById('scoreEl').textContent = score;
+        document.getElementById('roundEl').textContent = round;
+    }
+
+    // ─── Start a round ─────────────────────────────────────────
+    async function startRound() {
+        if (phase !== 'idle') return;
+        phase = 'revealing';
+        document.getElementById('startBtn').disabled = true;
+
+        // Reset positions
+        positions = [0, 1, 2];
+        applyPositions(false);
+        for (let i = 0; i < 3; i++) { showBall(i, false); liftCup(i, false); }
+
+        setStatus('Sharchani ko\'ring...');
+        ballIndex = Math.floor(Math.random() * 3);
+
+        await sleep(80);
+
+        // Lift all cups
+        for (let i = 0; i < 3; i++) liftCup(i, true);
+        await sleep(500);
+
+        // Reveal ball
+        showBall(ballIndex, true);
+        await sleep(900);
+
+        // Lower cups (ball stays visible until cup closes)
+        setStatus('Eslab qoling!');
+        for (let i = 0; i < 3; i++) liftCup(i, false);
+        await sleep(420);
+        showBall(ballIndex, false);
+        await sleep(180);
+
+        // Shuffle
+        phase = 'shuffling';
+        setStatus('Diqqat bilan kuzating...');
+        await shuffle();
+
+        // Allow guess
+        phase = 'guessing';
+        setStatus('Qaysi stakanda? Bosing!');
+        for (let i = 0; i < 3; i++) document.getElementById('cup' + i).classList.add('clickable');
+    }
+
+    // ─── Shuffle ───────────────────────────────────────────────
+    async function shuffle() {
+        const n = currentShuffles();
+        const spd = currentSpeed();
+        for (let s = 0; s < n; s++) {
+            let a = Math.floor(Math.random() * 3);
+            let b; do { b = Math.floor(Math.random() * 3); } while (b === a);
+            [positions[a], positions[b]] = [positions[b], positions[a]];
+            applyPositions(true);
+            await sleep(spd + 80);
+        }
+    }
+
+    // ─── Guess ─────────────────────────────────────────────────
+    async function onGuess(cupIdx) {
+        if (phase !== 'guessing') return;
+        phase = 'result';
+        for (let i = 0; i < 3; i++) document.getElementById('cup' + i).classList.remove('clickable');
+
+        const correct = (cupIdx === ballIndex);
+
+        if (correct) {
+            score++;
+            round++;
+            updateHUD();
+
+            liftCup(cupIdx, true);
+            await sleep(380);
+            showBall(cupIdx, true);
+            setStatus('🎉 To\'g\'ri! Keyingi bosqich!', '#68d391');
+            await sleep(500);
+            const others = [0,1,2].filter(i => i !== cupIdx);
+            liftCup(others[0], true);
+            await sleep(240);
+            liftCup(others[1], true);
+            await sleep(1200);
+
+            // Close everything and start next round automatically
+            for (let i = 0; i < 3; i++) { liftCup(i, false); showBall(i, false); }
+            await sleep(450);
+            phase = 'idle';
+            await startRound();
+
+        } else {
+            // Wrong — reveal sequence then game over
+            liftCup(cupIdx, true);
+            await sleep(380);
+            const otherEmpty = [0,1,2].filter(i => i !== cupIdx && i !== ballIndex)[0];
+            liftCup(otherEmpty, true);
+            await sleep(350);
+            liftCup(ballIndex, true);
+            await sleep(350);
+            showBall(ballIndex, true);
+            setStatus('❌ Noto\'g\'ri! O\'yin tugadi.', '#fc8181');
+            await sleep(1800);
+
+            // Reset cups
+            for (let i = 0; i < 3; i++) { liftCup(i, false); showBall(i, false); }
+            await sleep(400);
+
+            phase = 'idle';
+            endGame();
+        }
+    }
+
+    // Attach click handlers
+    for (let i = 0; i < 3; i++) {
+        (function(idx) {
+            document.getElementById('cup' + idx).addEventListener('click', () => {
+                if (phase === 'guessing') onGuess(idx);
+            });
+        })(i);
+    }
+
+    // ─── Game Over ─────────────────────────────────────────────
+    function endGame() {
+        document.getElementById('gameScreen').style.display = 'none';
+        document.getElementById('endScreen').classList.add('visible');
+        document.getElementById('finalScore').textContent = score;
+
+        // Reset loaders
+        document.getElementById('recordLoader').style.display = 'flex';
+        document.getElementById('recordVal').style.display   = 'none';
+        document.getElementById('newRecord').style.display   = 'none';
+        document.getElementById('rankLoader').style.display  = 'flex';
+        document.getElementById('rankVal').style.display     = 'none';
+        document.getElementById('leaderboardList').innerHTML =
+            '<div class="loader-container"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>';
+
+        if (userId && score > 0) {
+            saveScore(score);
+        } else if (userId) {
+            loadLeaderboard();
+        } else {
+            // No userId — show current score directly, no saving
+            showRecordVal(score, score);
+            showRankVal(null);
+            loadLeaderboard();
+        }
+    }
+
+    function showRecordVal(best, current) {
+        document.getElementById('recordLoader').style.display = 'none';
+        document.getElementById('recordVal').style.display = 'block';
+        document.getElementById('recordVal').textContent = best;
+        if (best !== null && best !== undefined && best === current) {
+            document.getElementById('newRecord').style.display = 'block';
+        }
+    }
+
+    function showRankVal(rank) {
+        document.getElementById('rankLoader').style.display = 'none';
+        document.getElementById('rankVal').style.display = 'block';
+        document.getElementById('rankVal').textContent = rank !== null ? '#' + rank : '—';
+    }
+
+    async function saveScore(finalScore) {
+        try {
+            const res = await fetch('/api/game2/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: parseInt(userId), username, score: finalScore })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showRecordVal(data.best_score, finalScore);
+            } else {
+                showRecordVal(finalScore, finalScore);
+            }
+        } catch(e) {
+            console.error(e);
+            showRecordVal(finalScore, finalScore);
+        }
+        loadLeaderboard();
+    }
+
+    async function loadLeaderboard() {
+        try {
+            let url = '/api/game2/leaderboard';
+            if (userId) url += '?user_id=' + userId;
+            const res  = await fetch(url);
+            const data = await res.json();
+
+            // Rank — always resolve loader
+            if (data.user_rank !== null && data.user_rank !== undefined) {
+                showRankVal(data.user_rank);
+            } else {
+                showRankVal(null);
+            }
+
+            // Record fallback — if loader still visible (score=0 path or error path)
+            if (document.getElementById('recordLoader').style.display !== 'none') {
+                const best = (data.user_best !== null && data.user_best !== undefined) ? data.user_best : 0;
+                showRecordVal(best, score);
+            }
+
+            // Leaderboard list
+            const list = document.getElementById('leaderboardList');
+            if (data.leaderboard && data.leaderboard.length > 0) {
+                list.innerHTML = '';
+                data.leaderboard.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'leaderboard-item';
+                    if (item.rank === 1) div.classList.add('top-1');
+                    else if (item.rank === 2) div.classList.add('top-2');
+                    else if (item.rank === 3) div.classList.add('top-3');
+                    const name = item.username || 'User ' + item.user_id;
+                    div.innerHTML = `
+                        <span class="lb-rank">${item.rank}</span>
+                        <span class="lb-name">${name}</span>
+                        <span class="lb-score">${item.best_score}</span>`;
+                    list.appendChild(div);
+                });
+            } else {
+                list.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;padding:16px;font-size:0.85rem;">Hali rekordlar yo\'q</div>';
+            }
+        } catch(e) {
+            console.error(e);
+            // Always resolve loaders even on error
+            if (document.getElementById('recordLoader').style.display !== 'none') showRecordVal(0, score);
+            showRankVal(null);
+        }
+    }
+
+    // ─── Restart ───────────────────────────────────────────────
+    function restartGame() {
+        score = 0; round = 1;
+        updateHUD();
+        document.getElementById('endScreen').classList.remove('visible');
+        document.getElementById('gameScreen').style.display = 'flex';
+        document.getElementById('startBtn').disabled = false;
+        setStatus('Boshlash tugmasini bosing!');
+        positions = [0,1,2];
+        applyPositions(false);
+        for (let i = 0; i < 3; i++) { showBall(i, false); liftCup(i, false); }
+        phase = 'idle';
+    }
+
+    // ─── Init ──────────────────────────────────────────────────
+    window.addEventListener('load', () => { applyPositions(false); updateHUD(); });
+    window.addEventListener('resize', () => applyPositions(false));
+</script>
+</body>
+</html>
