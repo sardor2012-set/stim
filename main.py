@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 TOKEN = "8275460864:AAF38ALOYi054ECuCJGTfGhHwUrtSBVqnSw"
-WEBAPP_URL = "https://stim-p9gv.onrender.com/"
+WEBAPP_URL = "https://2b2d3548-fc91-474c-929d-75e347bffe63-00-34oulo4kv2v7i.pike.replit.dev/"
 WELCOME_IMAGE_URL = FSInputFile("static/images/Banner.jpg")
 REQUIRED_CHANNELS = {
     " Stimora Lab": "@stimora_lab",
@@ -75,7 +75,13 @@ def main_menu_keyboard(user_id=None, name=None, photo_url=None):
                           text=" Yordam",
                           style="danger",
                           icon_custom_emoji_id="5238025132177369293")
-                  ]],
+                  ],
+                   [
+                       KeyboardButton(
+                           text=" Olmos ko'z o'yini",
+                           style="success",
+                           icon_custom_emoji_id="5231012545799666522")
+                   ]],
         resize_keyboard=True,
         one_time_keyboard=False)
     return keyboard
@@ -256,6 +262,15 @@ def init_db():
             )
             db.execute(
                 '''CREATE INDEX IF NOT EXISTS idx_game_scores_score ON game_scores(score DESC)'''
+            )
+            db.execute(
+                '''CREATE TABLE IF NOT EXISTS game2_scores (id SERIAL PRIMARY KEY, user_id BIGINT NOT NULL, username TEXT, score INTEGER NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'''
+            )
+            db.execute(
+                '''CREATE INDEX IF NOT EXISTS idx_game2_scores_user_id ON game2_scores(user_id)'''
+            )
+            db.execute(
+                '''CREATE INDEX IF NOT EXISTS idx_game2_scores_score ON game2_scores(score DESC)'''
             )
 
             items_data = [(
@@ -448,6 +463,14 @@ def game():
     return render_template('game.html', user_id=user_id, username=username)
 
 
+@app.route('/game2')
+@app.route('/game2.html')
+def game2():
+    user_id = request.args.get('user_id')
+    username = request.args.get('username', '')
+    return render_template('game2.html', user_id=user_id, username=username)
+
+
 # API endpoints for game scores
 @app.route('/api/game/score', methods=['POST'])
 @rate_limit_ip(limit=20, window=60)
@@ -559,6 +582,98 @@ def get_leaderboard():
                 })
     except Exception as e:
         logger.error(f"Error getting leaderboard: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/game2/score', methods=['POST'])
+@rate_limit_ip(limit=20, window=60)
+def save_game2_score():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        username = data.get('username', f'User {user_id}')
+        score = data.get('score', 0)
+
+        if not user_id or score is None:
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        with get_db() as conn:
+            with conn.cursor() as db:
+                db.execute(
+                    "INSERT INTO game2_scores (user_id, username, score) VALUES (%s, %s, %s)",
+                    (user_id, username, score))
+                conn.commit()
+
+                db.execute(
+                    "SELECT MAX(score) as best_score FROM game2_scores WHERE user_id = %s",
+                    (user_id,))
+                best_score = db.fetchone()['best_score'] or 0
+
+                return jsonify({
+                    'success': True,
+                    'best_score': best_score
+                })
+    except Exception as e:
+        logger.error(f"Error saving game2 score: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/game2/leaderboard')
+@rate_limit_ip(limit=50, window=60)
+def get_game2_leaderboard():
+    try:
+        user_id = request.args.get('user_id', type=int)
+
+        with get_db() as conn:
+            with conn.cursor() as db:
+                db.execute("""
+                    SELECT gs.user_id,
+                           COALESCE(NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''), gs.username) as display_name,
+                           MAX(gs.score) as best_score,
+                           COUNT(*) as games_played
+                    FROM game2_scores gs
+                    LEFT JOIN users u ON gs.user_id = u.user_id
+                    GROUP BY gs.user_id, display_name
+                    HAVING MAX(gs.score) >= 1
+                    ORDER BY best_score DESC
+                """)
+                top_scores = db.fetchall()
+
+                user_rank = None
+                user_best = None
+                if user_id:
+                    db.execute(
+                        "SELECT MAX(score) as best FROM game2_scores WHERE user_id = %s",
+                        (user_id,))
+                    result = db.fetchone()
+                    user_best = result['best'] if result and result['best'] else 0
+
+                    db.execute("""
+                        WITH user_scores AS (
+                            SELECT user_id, MAX(score) as best
+                            FROM game2_scores
+                            GROUP BY user_id
+                        )
+                        SELECT COUNT(*) + 1 as rank
+                        FROM user_scores
+                        WHERE best > %s
+                    """, (user_best,))
+                    result = db.fetchone()
+                    user_rank = result['rank'] if result else None
+
+                return jsonify({
+                    'leaderboard': [{
+                        'rank': i + 1,
+                        'user_id': row['user_id'],
+                        'username': row['display_name'],
+                        'best_score': row['best_score'],
+                        'games_played': row['games_played']
+                    } for i, row in enumerate(top_scores)],
+                    'user_rank': user_rank,
+                    'user_best': user_best
+                })
+    except Exception as e:
+        logger.error(f"Error getting game2 leaderboard: {e}")
         return jsonify({'error': str(e)}), 500
 
 
