@@ -110,18 +110,18 @@
         .header { display: flex; justify-content: space-between; align-items: center; background: var(--header-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px var(--shadow-color); transition: background-color 0.3s; }
         .user-info { display: flex; align-items: center; gap: 10px; position: relative; }
         .avatar-container { position: relative; width: 35px; height: 35px; }
-        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0088cc; }
+        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0088cc;}
         .santa-hat {
             position: absolute;
-            top: -15px !important;
-            left: -12px !important;
-            width: 50px !important;
+            top: -23px !important;
+            left: -25px !important;
+            width: 63px !important;
             height: auto !important;
             z-index: 2 !important;
-            transform: rotate(5deg) !important;
+            transform: rotate(0deg) !important;
             pointer-events: none !important;
             display: block !important;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)) !important;
         }
         .username { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 1.1em; color: var(--text-color); }
         .medal-icon { font-size: 0.9em; }
@@ -289,6 +289,59 @@
             font-size: 1.2em;
         }
 
+        /* Anti-cheat overlay */
+        #anticheat-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 20, 0.97);
+            z-index: 99999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #anticheat-overlay.visible {
+            display: flex;
+        }
+        .anticheat-icon {
+            font-size: 3.5em;
+            color: #f44336;
+            margin-bottom: 18px;
+            animation: pulse 1s infinite;
+        }
+        .anticheat-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 0 20px;
+        }
+        .anticheat-sub {
+            font-size: 0.95em;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            padding: 0 24px;
+            margin-bottom: 28px;
+        }
+        .anticheat-home-btn {
+            background: #f44336;
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            padding: 13px 32px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+        }
+        .anticheat-home-btn:active {
+            opacity: 0.85;
+        }
+
         /* Stats Modal Styles */
         #stats-modal .modal-content {
             max-width: 420px;
@@ -398,7 +451,7 @@
         .snow-toggle.active { color: #0088cc; }
         .snow-toggle.inactive { color: #888; opacity: 0.5; }
 
-        /* Snow effect */
+        /* Leaf fall effect */
         #snow-container {
             position: fixed;
             top: 0;
@@ -406,21 +459,17 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: -1;
+            z-index: 0;
             overflow: hidden;
         }
-        .snowflake {
-            position: absolute;
-            top: -10px;
-            color: #888;
-            font-size: 1em;
+        .leaf {
+            position: fixed;
+            top: -70px;
             user-select: none;
             pointer-events: none;
-            animation: fall linear infinite;
-        }
-        @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+            width: var(--leaf-size);
+            height: auto;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
         }
 
         /* Season Progress Styles */
@@ -819,6 +868,31 @@
             pointer-events: none;
         }
 
+        .math-game-block2 {
+            margin: 20px 0 10px 0;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #ffffff, #fae2c9);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            border: 2px solid #ffe693;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .math-game-block2::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(233, 69, 96, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 200, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
         .math-game-title {
             font-weight: 800;
             margin-bottom: 15px;
@@ -831,6 +905,21 @@
 
         .math-game-title i {
             color: #e94560;
+            margin-right: 10px;
+        }
+
+        .math-game2-title {
+            font-weight: 800;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .math-game2-title i {
+            color: #19abd4;
             margin-right: 10px;
         }
 
@@ -916,6 +1005,36 @@
             margin-right: 8px;
         }
 
+        .math-game2-btn {
+            padding: 16px 40px;
+            background: linear-gradient(135deg, #00c8ff 0%, #006884 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+            position: relative;
+            z-index: 1;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .math-game2-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.6);
+        }
+
+        .math-game2-btn:active {
+            transform: translateY(0);
+        }
+
+        .math-game2-btn i {
+            margin-right: 8px;
+        }
+        
         .math-decoration {
             position: absolute;
             font-size: 8em;
@@ -1229,7 +1348,7 @@
         .cup-card {
             max-width: 520px;
             width: 100%;
-            background: linear-gradient(135deg, #6a5cff, #ff4ecd, #00d4ff);
+            background: linear-gradient(135deg, #eef2f7, #2970ce);
             border-radius: 24px;
             padding: 1rem 1.2rem 2rem;
             transition: all 0.3s ease;
@@ -1322,7 +1441,7 @@
         .tagline {
             font-size: 0.85rem;
             font-weight: 430;
-            color: #d4c8c7;
+            color: #4a4848;
             margin-bottom: 1.5rem;
             border-top: 1px solid #F0F2F4;
             display: inline-block;
@@ -1463,7 +1582,7 @@
             <div class="user-info">
                 <div class="avatar-container">
                     <img id="avatar" class="avatar" src="https://ui-avatars.com/api/?name=U&background=random" alt="avatar">
-                    <img src="/static/images/santa-hat.png" class="santa-hat" alt="santa-hat">
+                    <img src="/static/images/hat.png" class="santa-hat" alt="hat">
                 </div>
                 <div style="display: flex; flex-direction: column;">
                     <div class="username" id="username">
@@ -1477,7 +1596,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div class="snow-toggle active" onclick="toggleSnow()" id="snow-toggle-icon">
-                    <i class="fa-solid fa-snowflake"></i>
+                    <i class="fa-brands fa-canadian-maple-leaf"></i>
                 </div>
                 <div class="theme-toggle" onclick="toggleTheme()" id="theme-icon">
                     <i class="fa-solid fa-moon"></i>
@@ -1790,6 +1909,40 @@
                 setInterval(updateGameLink, 1000);
             </script>
 
+            <div class="math-game-block2">
+                <div class="math-game2-title"><i class="fa-solid fa-table-cells"></i>SCHULTE TABLE GAME</div>
+                <div class="gmae_photo">
+                    <img style="width: 200px; margin-bottom: 15px; margin-top: 5px;" src="/static/images/game.png" alt="">
+                </div>
+                <div style="color: #00c8ff; margin-bottom: 10px;">Diqqat va epchilikni charqlang!</div>
+                <a href="#" id="schulteGameLink" class="math-game2-btn"><i class="fa-solid fa-gamepad"></i> O'ynash</a>
+            </div>
+
+            <script>
+                function updateSchulteGameLink() {
+                    const gameLink = document.getElementById('schulteGameLink');
+                    if (!gameLink) return;
+                    var uid = '';
+                    var uname = '';
+                    if (typeof globalUserId !== 'undefined' && globalUserId) {
+                        uid = globalUserId;
+                    } else {
+                        var urlParams = new URLSearchParams(window.location.search);
+                        uid = urlParams.get('user_id') || '';
+                    }
+                    if (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        uname = tg.initDataUnsafe.user.first_name || '';
+                    }
+                    if (!uname) {
+                        var urlParams2 = new URLSearchParams(window.location.search);
+                        uname = urlParams2.get('username') || urlParams2.get('name') || 'User';
+                    }
+                    gameLink.href = '/game3?user_id=' + encodeURIComponent(uid) + '&username=' + encodeURIComponent(uname);
+                }
+                updateSchulteGameLink();
+                setInterval(updateSchulteGameLink, 1000);
+            </script>
+
             <!-- School Photos Block -->
             <div class="pedestal-container2" id="school-photos-section" style="margin-top: 20px; display: block !important;">
                 <div class="pedestal-title" style="font-size: 1.1em;"><i class="fa-solid fa-school"></i> Maktabimiz rasmlari</div>
@@ -1875,7 +2028,16 @@
 
     <!-- Tasks Play Modal -->
     <div id="tasks-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="position: relative;">
+            <!-- Anti-cheat overlay -->
+            <div id="anticheat-overlay">
+                <div class="anticheat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="anticheat-title">Siz boshqa sahifaga o'tdingiz!</div>
+                <div class="anticheat-sub">Vazifa avtomatik ravishda yakunlandi. Natijalaringiz saqlandi.</div>
+                <button class="anticheat-home-btn" onclick="closeAnticheatAndGoHome()">
+                    <i class="fa-solid fa-house"></i> Bosh sahifaga qaytish
+                </button>
+            </div>
             <div class="modal-header">
                 <div class="modal-title">Vazifalarni yechish</div>
                 <div class="task-progress" id="task-progress-text">1 / 5</div>
@@ -2339,6 +2501,9 @@
                 tg.showAlert("Xato: to'plam ma'lumotlari yuklanmadi");
                 return;
             }
+
+            // Reset anti-cheat flag for the new attempt
+            resetAnticheat();
 
             // Clear previous state when opening a new bundle
             clearBundleState();
@@ -3204,7 +3369,7 @@
 
         function startSnow() {
             if (snowInterval) return;
-            snowInterval = setInterval(createSnowflake, 100);
+            snowInterval = setInterval(createLeaf, 600);
         }
 
         function stopSnow() {
@@ -3216,19 +3381,48 @@
             if (container) container.innerHTML = '';
         }
 
-        function createSnowflake() {
+        function createLeaf() {
             const container = document.getElementById('snow-container');
             if (!container) return;
-            const snowflake = document.createElement('div');
-            snowflake.className = 'snowflake';
-            snowflake.innerHTML = '●';
-            snowflake.style.left = Math.random() * 100 + 'vw';
-            snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
-            snowflake.style.opacity = Math.random();
-            snowflake.style.fontSize = Math.random() * 10 + 5 + 'px';
+            const leaf = document.createElement('img');
+            leaf.src = '/static/images/leaf.png';
+            leaf.className = 'leaf';
 
-            container.appendChild(snowflake);
-            setTimeout(() => snowflake.remove(), 5000);
+            const size = Math.random() * 25 + 22;
+            const duration = (Math.random() * 4 + 7) * 1000;
+            const swayAmt = Math.random() * 55 + 25;
+            const swayPhase = Math.random() * Math.PI * 2;
+            const swayDir = Math.random() > 0.5 ? 1 : -1;
+            const swayFreq = Math.random() * 1.5 + 1;
+            const startRot = Math.random() * 360;
+            const rotSpeed = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 80 + 40);
+            const opacity = Math.random() * 0.35 + 0.65;
+            const startX = Math.random() * 105 - 5;
+
+            leaf.style.left = startX + 'vw';
+            leaf.style.setProperty('--leaf-size', size + 'px');
+
+            const steps = 80;
+            const keyframes = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const yVh = t * 115;
+                const xPx = swayDir * swayAmt * Math.sin(swayPhase + t * Math.PI * 2 * swayFreq);
+                const rot = startRot + rotSpeed * t;
+                const op = t > 0.85 ? opacity * (1 - (t - 0.85) / 0.15) : opacity;
+                keyframes.push({
+                    transform: `translateY(${yVh}vh) translateX(${xPx}px) rotate(${rot}deg)`,
+                    opacity: op
+                });
+            }
+
+            container.appendChild(leaf);
+            const anim = leaf.animate(keyframes, {
+                duration: duration,
+                easing: 'linear',
+                fill: 'none'
+            });
+            anim.onfinish = () => leaf.remove();
         }
 
         function toggleSnow() {
@@ -3732,6 +3926,157 @@
                 switchSection('purchases');
                 filterPurchases('pending');
             }
+        }
+
+        // ============================================================
+        // ANTI-CHEAT: detect tab switch / app minimize / page hide
+        // ============================================================
+        let anticheatTriggered = false;
+
+        function isQuizActive() {
+            return currentBundle !== null &&
+                document.getElementById('tasks-modal') &&
+                document.getElementById('tasks-modal').style.display === 'block' &&
+                !anticheatTriggered &&
+                !window.isSubmittingBundle;
+        }
+
+        // Build the submission payload from current quiz state
+        function buildCheatPayload() {
+            if (!currentBundle) return null;
+            const savedBundle = currentBundle;
+            const savedQuestions = currentBundleQuestions;
+            const savedAnswers = Object.assign({}, bundleAnswers);
+
+            let earnedCorrect = 0;
+            for (const answer of Object.values(savedAnswers)) {
+                if (answer && answer.is_correct) earnedCorrect++;
+            }
+            const questionBaseRating = savedQuestions[0]?.rating || 5;
+            const earnedScore = earnedCorrect * questionBaseRating;
+            const maxPossibleScore = savedQuestions.reduce((sum, q) => sum + (parseInt(q.rating) || 5), 0);
+            const finalScore = Math.min(earnedScore, maxPossibleScore);
+
+            return {
+                user_id: globalUserId,
+                score: finalScore,
+                task_id: savedBundle.item_id,
+                is_correct: false,
+                correct_count: earnedCorrect,
+                incorrect_count: savedQuestions.length - earnedCorrect,
+                answers: savedAnswers
+            };
+        }
+
+        // sendBeacon-based submit: guaranteed to fire even when page is killed
+        function submitCheatBeacon(payload) {
+            if (!payload) return false;
+            try {
+                const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                return navigator.sendBeacon('/api/tasks/complete', blob);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function handleCheatDetected() {
+            if (!isQuizActive()) return;
+            anticheatTriggered = true;
+            window.isSubmittingBundle = true;
+
+            // Show the overlay immediately
+            const overlay = document.getElementById('anticheat-overlay');
+            if (overlay) overlay.classList.add('visible');
+
+            // Stop the timer
+            stopBundleTimer();
+
+            const payload = buildCheatPayload();
+
+            // PRIMARY: sendBeacon — guaranteed delivery even when app/phone is closed
+            const beaconSent = submitCheatBeacon(payload);
+
+            if (beaconSent) {
+                // Beacon is queued by browser — safe to clean up state
+                window.isSubmittingBundle = false;
+                clearBundleState();
+                loadUserBalance();
+                loadBundles();
+            } else {
+                // Fallback: regular fetch if sendBeacon is not supported or failed
+                try {
+                    await fetch('/api/tasks/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (e) {
+                    console.error('Anti-cheat submit error:', e);
+                } finally {
+                    window.isSubmittingBundle = false;
+                    clearBundleState();
+                    loadUserBalance();
+                    loadBundles();
+                }
+            }
+        }
+
+        // visibilitychange — fires when app is minimized, phone screen turns off,
+        // or user switches to another app (most reliable on mobile)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Use beacon directly here for immediate fire-and-forget
+                if (isQuizActive()) {
+                    anticheatTriggered = true;
+                    window.isSubmittingBundle = true;
+                    stopBundleTimer();
+                    const overlay = document.getElementById('anticheat-overlay');
+                    if (overlay) overlay.classList.add('visible');
+                    submitCheatBeacon(buildCheatPayload());
+                    clearBundleState();
+                }
+            }
+        });
+
+        // pagehide — fires when Telegram/browser is fully closed or navigated away
+        window.addEventListener('pagehide', () => {
+            if (isQuizActive()) {
+                anticheatTriggered = true;
+                window.isSubmittingBundle = true;
+                stopBundleTimer();
+                submitCheatBeacon(buildCheatPayload());
+                clearBundleState();
+            }
+        });
+
+        // freeze — fires on Android/iOS when the OS aggressively suspends the app
+        document.addEventListener('freeze', () => {
+            if (isQuizActive()) {
+                anticheatTriggered = true;
+                window.isSubmittingBundle = true;
+                stopBundleTimer();
+                submitCheatBeacon(buildCheatPayload());
+                clearBundleState();
+            }
+        });
+
+        // blur — fires when window loses focus (desktop, switching windows)
+        window.addEventListener('blur', () => {
+            handleCheatDetected();
+        });
+
+        // Reset the flag when the quiz is opened so it can be triggered again
+        function resetAnticheat() {
+            anticheatTriggered = false;
+            const overlay = document.getElementById('anticheat-overlay');
+            if (overlay) overlay.classList.remove('visible');
+        }
+
+        // Button handler: hide overlay + close quiz modal + go to home section
+        function closeAnticheatAndGoHome() {
+            resetAnticheat();
+            document.getElementById('tasks-modal').style.display = 'none';
+            switchSection('shop');
         }
 
         // Bundle management variables
